@@ -6,9 +6,11 @@
   "type": "module",
   "dependencies": {
     "chunking-streams": "0.0.8",
-    "express": "^4.17.1",
+    "knex": "^0.21.21",
+    "luxon": "^2.0.2",
     "node-fetch": "^2.6.1",
     "simple-get": "^4.0.0",
+    "sqlite3": "^5.0.2",
     "unbzip2-stream": "^1.4.3"
   },
   "devDependencies": {},

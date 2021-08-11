@@ -1,25 +1,20 @@
+import { createDB } from './db.js';
+import WikidataDBStream from './wikidata-db-stream.js';
 import { getSubClasses } from './wikidata-sparql.js';
-import { getWikiDataStream } from './wikidata-stream.js';
+import { getWikidataStream } from './wikidata-stream.js';
 
-const humanSettlementClasses = [
-	'Q486972',
-	...await getSubClasses('Q486972')
-];
+console.log('Creating db ...')
+const db = await createDB('./test.db');
 
-const wikiDataStream = await getWikiDataStream();
-wikiDataStream.on('data', function (obj) {
-	const parentsArr = obj.claims.P31 || [];
+console.log('Fetching subclasses of human settlement through SparQL')
+const humanSettlementClasses = await getSubClasses('Q486972');
+humanSettlementClasses.push('Q486972');
 
-	let isHumanSettlement = false;
-	for (const parentObj of parentsArr) {
-		const parentId = parentObj.mainsnak.datavalue.value.id;
-		if (humanSettlementClasses.includes(parentId)) {
-			isHumanSettlement = true;
-			break;
-		}
-	}
+console.log('Creating a stream of the latest Wikidata database dump')
+const wikidataStream = await getWikidataStream();
 
-	if (isHumanSettlement) {
-		console.log(obj)
-	}
+console.log('Populating db')
+wikidataStream.pipe(new WikidataDBStream(db, humanSettlementClasses));
+wikidataStream.on('finish', function (){
+	db.destroy();
 });

@@ -3,7 +3,7 @@ import bz2 from 'unbzip2-stream';
 import stream from 'stream';
 import chunkingStreams from 'chunking-streams';
 
-const wikiDataDumpsURL = 'https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2';
+const wikidataDumpsURL = 'https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2';
 
 class JSONParseStream extends stream.Transform {
 	constructor (options) {
@@ -28,9 +28,9 @@ class JSONParseStream extends stream.Transform {
 	}
 }
 
-export async function getWikiDataStream () {
+export async function getWikidataStream () {
 	const httpsPipe =  await new Promise(function (resolve, reject) {
-		get(wikiDataDumpsURL, function (err, res) {
+		get(wikidataDumpsURL, function (err, res) {
 			if (err) { return reject(err); }
 			resolve(res);
 		});

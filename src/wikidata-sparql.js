@@ -1,8 +1,11 @@
 import fetch from 'node-fetch';
 
-// Potentially very slow
+// Everything in this file is potentially very slow
+
+const baseURL = 'https://query.wikidata.org/sparql';
+
 export async function getSubClasses (parentClass) {
-	const url = new URL('https://query.wikidata.org/sparql')
+	const url = new URL(baseURL)
 	url.searchParams.set('query', `SELECT ?s WHERE { ?s wdt:P279+ wd:${parentClass} . }`);
 	let res = await fetch(url, {
 		method: 'GET',
