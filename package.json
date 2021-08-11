@@ -1,0 +1,28 @@
+{
+  "name": "geo-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.js",
+  "type": "module",
+  "dependencies": {
+    "chunking-streams": "0.0.8",
+    "express": "^4.17.1",
+    "node-fetch": "^2.6.1",
+    "simple-get": "^4.0.0",
+    "unbzip2-stream": "^1.4.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AksoEo/geo-api.git"
+  },
+  "author": "Mia Nordentoft",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/AksoEo/geo-api/issues"
+  },
+  "homepage": "https://github.com/AksoEo/geo-api#readme"
+}
