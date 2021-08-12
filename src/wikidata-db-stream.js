@@ -50,9 +50,27 @@ export default class WikidataDBStream extends Writable {
 			}
 		}
 
+		let population = null;
+		let populationTime = Number.MIN_SAFE_INTEGER;
+		if (obj.claims.P1082) {
+			for (const populationEntry of obj.claims.P1082) {
+				let newPopulationTime = Number.MIN_SAFE_INTEGER;
+				if (populationEntry.qualifiers && populationEntry.qualifiers.P585) {
+					newPopulationTime = wikidataToLuxon(populationEntry.qualifiers.P585[0].datavalue.value);
+				}
+				if (newPopulationTime >= populationTime) {
+					population = parseInt(populationEntry.mainsnak.datavalue.value.amount, 10);
+					populationTime = newPopulationTime;
+				}
+			}
+		}
+
+		console.log(population)
+
 		await this.db('cities').insert({
 			id: obj.id,
-			country: countryId
+			country: countryId,
+			population
 		});
 
 		await this.db('cities_labels').insert(
