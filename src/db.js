@@ -28,7 +28,14 @@ export async function createDB (filename) {
 
 	await knex.schema.createTable('cities', function (table) {
 		table.string('id').primary();
-		table.string('country').index().references('countries.iso');
+		table.string('country').index();
+	});
+
+	await knex.schema.createTable('cities_labels', function (table) {
+		table.string('city');
+		table.string('lang');
+		table.primary(['city', 'lang'])
+		table.string('label').index();
 	});
 
 	return knex;
