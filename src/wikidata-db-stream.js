@@ -65,8 +65,6 @@ export default class WikidataDBStream extends Writable {
 			}
 		}
 
-		console.log(population)
-
 		await this.db('cities').insert({
 			id: obj.id,
 			country: countryId,
