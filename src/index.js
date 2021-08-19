@@ -15,6 +15,6 @@ const wikidataStream = await getWikidataStream();
 
 console.log('Populating db')
 wikidataStream.pipe(new WikidataDBStream(db, humanSettlementClasses));
-wikidataStream.on('finish', function (){
+wikidataStream.on('finish', function () {
 	db.destroy();
 });
