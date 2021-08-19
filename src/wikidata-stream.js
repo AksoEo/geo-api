@@ -11,8 +11,7 @@ const wikidataDumpsURL = 'https://dumps.wikimedia.org/wikidatawiki/entities/late
 const byteFormatObj = {
 	thousandsSeparator: ',',
 	unitSeparator: ' ',
-	fixedDecimals: true,
-	unit: 'MB'
+	fixedDecimals: true
 };
 
 class JSONParseStream extends stream.Transform {
@@ -64,10 +63,7 @@ export async function getWikidataStream (noMeter = false) {
 		const deltaBytes = meter.bytes - prevBytes;
 		const deltaTimeSeconds = (timeNow.toSeconds() - prevTime.toSeconds());
 		const speed = deltaBytes / deltaTimeSeconds;
-		const speedFormat = bytes.format(speed, Object.assign(
-			byteFormatObj,
-			{ unit: '' }
-		)) + '/s';
+		const speedFormat = bytes.format(speed, byteFormatObj) + '/s';
 		const deltaTimeTotalSeconds = (timeNow.toSeconds() - startTime.toSeconds());
 		const speedTotal = meter.bytes / deltaTimeTotalSeconds;
 		const bytesLeft = size - meter.bytes;
