@@ -26,6 +26,16 @@ export async function createDB (filename) {
 		table.string('iso', 2).index();
 	});
 
+	await knex.schema.createTable('territorial_entities', function (table) {
+		table.string('id').primary();
+	});
+
+	await knex.schema.createTable('territorial_entities_parents', function (table) {
+		table.string('id');
+		table.string('parent').index();
+		table.primary(['id', 'parent']);
+	});
+
 	await knex.schema.createTable('cities', function (table) {
 		table.string('id').primary();
 		table.string('country').index();

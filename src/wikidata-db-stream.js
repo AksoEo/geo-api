@@ -3,45 +3,47 @@ import { DateTime } from 'luxon';
 
 import { wikidataToLuxon, areQualifiersWithinBounds } from './wikidata-time.js';
 
+function isSubClassOf (obj, classes) {
+	const parentsArr = obj.claims.P31 || [];
+	for (const parentObj of parentsArr) {
+		const parentId = parentObj.mainsnak.datavalue.value.id;
+		if (classes.includes(parentId)) {
+			return true;
+		}
+	}
+	return false;
+}
+
 export default class WikidataDBStream extends Writable {
-	constructor (db, classes) {
+	constructor (db, humanSettlementClasses, territorialEntityClasses) {
 		super({
 			objectMode: true
 		});
 		this.db = db;
-		this.classes = classes;
+		this.humanSettlementClasses = humanSettlementClasses;
+		this.territorialEntityClasses = territorialEntityClasses;
 	}
 
-	async _write (obj, encoding, next) {
-		const parentsArr = obj.claims.P31 || [];
-		let isHumanSettlement = false;
-		for (const parentObj of parentsArr) {
-			const parentId = parentObj.mainsnak.datavalue.value.id;
-			if (this.classes.includes(parentId)) {
-				isHumanSettlement = true;
-				break;
+	async handleTerritorialEntity (obj) {
+		await this.db('territorial_entities').insert({
+			id: obj.id
+		});
+
+		const parents = obj.claims.P131 || [];
+		for (const parent of parents) {
+			if (!areQualifiersWithinBounds(parent.qualifiers)) {
+				continue;
 			}
+			await this.db('territorial_entities_parents')
+				.insert({
+					id: obj.id,
+					parent: parent.mainsnak.datavalue.value.id
+				});
 		}
+	}
 
-		if (!isHumanSettlement) {
-			// We may still want to store it if it is a country
-			if (!obj.claims.P297) { return next(); } // Must have ISO 3166-1 alpha-2 code
-			let codeEntry;
-			for (codeEntry of obj.claims.P297) {
-				if (areQualifiersWithinBounds(obj.claims.P297.qualifiers)) {
-					break;
-				}
-			}
-
-			await this.db('countries').insert({
-				id: obj.id,
-				iso: codeEntry.mainsnak.datavalue.value.toLowerCase()
-			});
-
-			return next();
-		}
-
-		if (!obj.claims.P17) { return next(); } // we cannot use the entry without this data
+	async handleHumanSettlement (obj) {
+		if (!obj.claims.P17) { return; } // we cannot use the entry without its country
 		let countryId;
 		for (const countryEntry of obj.claims.P17) {
 			countryId = countryEntry.mainsnak.datavalue.value.id;
@@ -80,6 +82,34 @@ export default class WikidataDBStream extends Writable {
 				};
 			})
 		);
+	}
+
+	async _write (obj, encoding, next) {
+		if (obj.claims.P297) {
+			// It is a country as it has an ISO 3166-1 alpha-2 code
+			let codeEntry;
+			for (codeEntry of obj.claims.P297) {
+				if (areQualifiersWithinBounds(obj.claims.P297.qualifiers)) {
+					break;
+				}
+			}
+
+			await this.db('countries').insert({
+				id: obj.id,
+				iso: codeEntry.mainsnak.datavalue.value.toLowerCase()
+			});
+			// We do not exit here, as city-states are a thing
+		}
+
+		const isTerritorialEntity = isSubClassOf(obj, this.territorialEntityClasses);
+		if (isTerritorialEntity) {
+			await this.handleTerritorialEntity(obj);
+		}
+
+		const isHumanSettlement = isSubClassOf(obj, this.humanSettlementClasses);
+		if (isHumanSettlement) {
+			await this.handleHumanSettlement(obj);
+		}
 
 		next();
 	}
