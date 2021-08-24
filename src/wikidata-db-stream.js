@@ -42,6 +42,14 @@ export default class WikidataDBStream extends Writable {
 		}
 	}
 
+	async handleLanguage (obj) {
+		if (!obj.claims.P424) { return; } // we need its wikimedia code
+		await this.db('languages').insert({
+			id: obj.id,
+			code: obj.claims.P424[0].mainsnak.datavalue.value
+		});
+	}
+
 	async handleHumanSettlement (obj) {
 		if (!obj.claims.P17) { return; } // we cannot use the entry without its country
 		let countryId;
@@ -151,6 +159,11 @@ export default class WikidataDBStream extends Writable {
 		const isHumanSettlement = isSubClassOf(obj, this.humanSettlementClasses);
 		if (isHumanSettlement) {
 			await this.handleHumanSettlement(obj);
+		}
+
+		const isLanguage = isSubClassOf(obj, ['Q34770']);
+		if (isLanguage) {
+			await this.handleLanguage(obj);
 		}
 
 		next();
