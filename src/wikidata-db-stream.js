@@ -40,6 +40,19 @@ export default class WikidataDBStream extends Writable {
 					parent: parent.mainsnak.datavalue.value.id
 				});
 		}
+
+		if (obj.claims.P37) {
+			for (const lang of obj.claims.P37) { // official language
+				if (lang.mainsnak.snaktype !== 'value') { continue; }
+				if (!areQualifiersWithinBounds(obj.claims.P37.qualifiers)) {
+					continue;
+				}
+				await this.db('object_languages').insert({
+					id: obj.id,
+					lang_id: lang.mainsnak.datavalue.value.id
+				}).onConflict(['id', 'lang_id']).ignore();
+			}
+		}
 	}
 
 	async handleLanguage (obj) {
@@ -142,7 +155,7 @@ export default class WikidataDBStream extends Writable {
 				if (!areQualifiersWithinBounds(obj.claims.P37.qualifiers)) {
 					continue;
 				}
-				await this.db('countries_languages').insert({
+				await this.db('object_languages').insert({
 					id: obj.id,
 					lang_id: lang.mainsnak.datavalue.value.id
 				});

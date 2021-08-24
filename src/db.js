@@ -26,7 +26,7 @@ export async function createDB (filename) {
 		table.string('iso', 2).index();
 	});
 
-	await knex.schema.createTable('countries_languages', function (table) {
+	await knex.schema.createTable('object_languages', function (table) {
 		table.string('id');
 		table.string('lang_id');
 		table.primary(['id', 'lang_id']);
