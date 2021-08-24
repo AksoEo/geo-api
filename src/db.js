@@ -43,10 +43,11 @@ export async function createDB (filename) {
 	});
 
 	await knex.schema.createTable('cities_labels', function (table) {
-		table.string('city');
-		table.string('lang');
-		table.primary(['city', 'lang'])
-		table.string('label').index();
+		table.string('id');
+		table.string('lang').index();
+		table.integer('native_order').index();
+		table.string('label');
+		table.primary(['id', 'lang', 'native_order']);
 	});
 
 	return knex;

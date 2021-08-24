@@ -73,15 +73,46 @@ export default class WikidataDBStream extends Writable {
 			population
 		});
 
+		// Insert labels
 		await this.db('cities_labels').insert(
 			Object.values(obj.labels).map(labelObj => {
 				return {
-					city: obj.id,
+					id: obj.id,
 					lang: labelObj.language,
 					label: labelObj.value
 				};
 			})
 		);
+
+		// Insert native labels
+		const nativeLabels = [];
+		if (obj.claims.P1705) { // native label
+			for (const claim of obj.claims.P1705) {
+				nativeLabels.push({
+					id: obj.id,
+					lang: claim.mainsnak.datavalue.value.language,
+					label: claim.mainsnak.datavalue.value.text,
+					native_order: nativeLabels.length
+				});
+			}
+		}
+		if (obj.claims.P1448) { // official name
+			for (const claim of obj.claims.P1448) {
+				if (!areQualifiersWithinBounds(claim.qualifiers)) {
+					continue;
+				}
+				nativeLabels.push({
+					id: obj.id,
+					lang: claim.mainsnak.datavalue.value.language,
+					label: claim.mainsnak.datavalue.value.text,
+					native_order: nativeLabels.length
+				});
+			}
+		}
+
+		if (nativeLabels.length) {
+			await this.db('cities_labels').insert(nativeLabels);
+		}
 	}
 
 	async _write (obj, encoding, next) {
