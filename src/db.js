@@ -26,6 +26,12 @@ export async function createDB (filename) {
 		table.string('iso', 2).index();
 	});
 
+	await knex.schema.createTable('countries_languages', function (table) {
+		table.string('id');
+		table.string('lang_id');
+		table.primary(['id', 'lang_id']);
+	});
+
 	await knex.schema.createTable('territorial_entities', function (table) {
 		table.string('id').primary();
 	});

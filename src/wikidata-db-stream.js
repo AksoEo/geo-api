@@ -129,6 +129,17 @@ export default class WikidataDBStream extends Writable {
 				id: obj.id,
 				iso: codeEntry.mainsnak.datavalue.value.toLowerCase()
 			});
+
+			for (const lang of obj.claims.P37) { // official language
+				if (!areQualifiersWithinBounds(obj.claims.P37.qualifiers)) {
+					continue;
+				}
+				await this.db('countries_languages').insert({
+					id: obj.id,
+					lang_id: lang.mainsnak.datavalue.value.id
+				});
+			}
+
 			// We do not exit here, as city-states are a thing
 		}
 
