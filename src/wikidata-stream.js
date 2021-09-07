@@ -94,6 +94,9 @@ export async function getWikidataStream (noMeter = false) {
 	const stream = httpsPipe
 		.pipe(meter)
 		.pipe(new UnBzip2())
+		// chunking streams is naïve and does not care for multi-byte chars in utf-8
+		// however, we are only receiving ASCII as all the unicode is encoded in the JSON
+		// as such this does not at the current point in time present any problem
 		.pipe(
 			new chunkingStreams.SeparatorChunker({
 				separator: '\n'
