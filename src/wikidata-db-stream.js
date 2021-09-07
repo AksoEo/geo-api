@@ -75,7 +75,7 @@ export default class WikidataDBStream extends Writable {
 
 		let population = null;
 		let populationTime = Number.MIN_SAFE_INTEGER;
-		if (obj.claims.P1082) {
+		if (obj.claims.P1082) { // population
 			for (const populationEntry of obj.claims.P1082) {
 				let newPopulationTime = Number.MIN_SAFE_INTEGER;
 				if (populationEntry.qualifiers && populationEntry.qualifiers.P585) {
@@ -88,10 +88,20 @@ export default class WikidataDBStream extends Writable {
 			}
 		}
 
+		let latitude = null;
+		let longitude = null;
+		if (obj.claims.P625 && obj.claims.P625[0].mainsnak.snaktype === 'value') { // coordinate location
+			const coordinates = obj.claims.P625[0].mainsnak.datavalue.value;
+			latitude = coordinates.latitude;
+			longitude = coordinates.longitude;
+		}
+
 		await this.db('cities').insert({
 			id: obj.id,
 			country: countryId,
-			population
+			population,
+			lat: latitude,
+			lon: longitude
 		});
 
 		// Insert labels
