@@ -1,10 +1,10 @@
 import get from 'simple-get';
-import bz2 from 'unbzip2-stream';
 import stream from 'stream';
 import chunkingStreams from 'chunking-streams';
 import Meter from 'stream-meter';
 import bytes from 'bytes';
 import { DateTime, Duration } from 'luxon';
+import { spawn } from 'child_process';
 
 const wikidataDumpsURL = 'https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2';
 
@@ -34,6 +34,23 @@ class JSONParseStream extends stream.Transform {
 		}
 		callback(null, obj);
 	}
+}
+
+class UnBzip2 extends stream.Duplex {
+	constructor () {
+		super();
+		this.unbz2 = spawn('bunzip2');
+		this.unbz2.stdout.on('data', data => {
+			this.push(data);
+		});
+	}
+
+	_write (chunk, encoding, callback) {
+		this.unbz2.stdin.write(chunk);
+		callback();
+	}
+
+	_read (size) {}
 }
 
 export async function getWikidataStream (noMeter = false) {
@@ -76,7 +93,7 @@ export async function getWikidataStream (noMeter = false) {
 
 	const stream = httpsPipe
 		.pipe(meter)
-		.pipe(bz2())
+		.pipe(new UnBzip2())
 		.pipe(
 			new chunkingStreams.SeparatorChunker({
 				separator: '\n'
