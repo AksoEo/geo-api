@@ -4,7 +4,7 @@ import { getSubClasses } from './wikidata-sparql.js';
 import { getWikidataStream } from './wikidata-stream.js';
 
 console.log('Creating db ...')
-const db = await createDB('./test.db');
+const db = await createDB(process.argv[2]);
 
 console.log('Fetching subclasses of "human settlement" through SparQL')
 const humanSettlementClasses = await getSubClasses('Q486972');
