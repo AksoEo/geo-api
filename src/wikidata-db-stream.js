@@ -79,6 +79,7 @@ export default class WikidataDBStream extends Writable {
 			for (const populationEntry of obj.claims.P1082) {
 				let newPopulationTime = Number.MIN_SAFE_INTEGER;
 				if (populationEntry.qualifiers && populationEntry.qualifiers.P585) {
+					if (populationEntry.qualifiers.P585[0].snaktype !== 'value') { continue; }
 					newPopulationTime = wikidataToLuxon(populationEntry.qualifiers.P585[0].datavalue.value);
 				}
 				if (newPopulationTime >= populationTime) {
@@ -146,7 +147,7 @@ export default class WikidataDBStream extends Writable {
 		}
 	}
 
-	async _write (obj, encoding, next) {
+	async handleChunk (obj) {
 		if (obj.claims.P297) {
 			// It is a country as it has an ISO 3166-1 alpha-2 code
 			let codeEntry;
@@ -187,6 +188,15 @@ export default class WikidataDBStream extends Writable {
 		const isLanguage = isSubClassOf(obj, ['Q34770']);
 		if (isLanguage) {
 			await this.handleLanguage(obj);
+		}
+	}
+
+	async _write (obj, encoding, next) {
+		try {
+			await this.handleChunk(obj);
+		} catch (e) {
+			console.error(`Errored at object ${obj.id}`);
+			throw e;
 		}
 
 		next();
