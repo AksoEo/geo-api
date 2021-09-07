@@ -22,3 +22,7 @@ wikidataStream.pipe(new WikidataDBStream(db, humanSettlementClasses, territorial
 wikidataStream.on('finish', function () {
 	db.destroy();
 });
+
+process.once('SIGINT', function () {
+	db.destroy();
+});
