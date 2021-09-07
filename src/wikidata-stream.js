@@ -46,8 +46,16 @@ class UnBzip2 extends stream.Duplex {
 	}
 
 	_write (chunk, encoding, callback) {
+		const maxReadableLength = 2 * (2 ** 20);
 		this.unbz2.stdin.write(chunk);
-		callback();
+
+		if (this.readableLength > maxReadableLength) {
+			const waitForSafeWriteInterval = setInterval(function () {
+				if (this.readableLength > maxReadableLength) { return; }
+				clearInterval(waitForSafeWriteInterval);
+				callback();
+			}, 100);
+		} else { callback(); }
 	}
 
 	_read (size) {}

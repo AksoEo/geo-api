@@ -38,7 +38,8 @@ export default class WikidataDBStream extends Writable {
 				.insert({
 					id: obj.id,
 					parent: parent.mainsnak.datavalue.value.id
-				});
+				})
+				.onConflict(['id', 'parent']).ignore();
 		}
 
 		if (obj.claims.P37) {
