@@ -144,7 +144,7 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                     id: obj_id.into(),
                     lang: lang.into(),
                     label: label.into(),
-                    native_order: 0,
+                    native_order: None,
                 })?;
             }
         }
@@ -162,7 +162,7 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                     id: obj_id.into(),
                     lang: lang.into(),
                     label: label.into(),
-                    native_order: native_order_index,
+                    native_order: Some(native_order_index),
                 })?;
                 native_order_index += 1;
             }
@@ -181,7 +181,7 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                     id: obj_id.into(),
                     lang: lang.into(),
                     label: label.into(),
-                    native_order: native_order_index,
+                    native_order: Some(native_order_index),
                 })?;
                 native_order_index += 1;
             }

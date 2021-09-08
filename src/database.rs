@@ -1,5 +1,5 @@
 use crossbeam::channel::Receiver;
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, Transaction};
 use std::collections::VecDeque;
 
 #[derive(Debug)]
@@ -30,7 +30,7 @@ pub enum DataEntry {
         id: String,
         lang: String,
         label: String,
-        native_order: u64,
+        native_order: Option<u64>,
     },
     Country {
         id: String,
@@ -50,8 +50,6 @@ pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
             PRAGMA journal_mode = MEMORY;
             PRAGMA temp_store = MEMORY;",
     )?;
-
-    // TODO: add indexes
 
     conn.execute(
         "create table if not exists countries (
@@ -110,7 +108,7 @@ pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
         "create table if not exists cities_labels (
                 id string not null,
                 lang string not null,
-                native_order integer not null,
+                native_order integer,
                 label string not null,
                 primary key (id, lang, native_order))",
         [],
@@ -140,68 +138,79 @@ pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
 
         if item_buffer.len() >= 127 {
             let tx = conn.transaction()?;
-
             for item in item_buffer.drain(..) {
-                match item {
-                    DataEntry::TerritorialEntity { id } => {
-                        tx.execute(
-                            "insert into territorial_entities (id) values (?1)",
-                            params![id],
-                        )?;
-                    }
-                    DataEntry::TerritorialEntityParent { id, parent } => {
-                        tx.execute(
-                            "insert into territorial_entities_parents (id, parent) values (?1, ?2) on conflict (id, parent) do nothing",
-                            params![id, parent],
-                        )?;
-                    }
-                    DataEntry::ObjectLanguage { id, lang_id } => {
-                        tx.execute(
-                            "insert into object_languages (id, lang_id) values (?1, ?2) on conflict (id, lang_id) do nothing",
-                            params![id, lang_id],
-                        )?;
-                    }
-                    DataEntry::Language { id, code } => {
-                        tx.execute(
-                            "insert into languages (id, code) values (?1, ?2)",
-                            params![id, code],
-                        )?;
-                    }
-                    DataEntry::City {
-                        id,
-                        country,
-                        population,
-                        lat,
-                        lon,
-                    } => {
-                        tx.execute(
-                            "insert into cities (id, country, population, lat, lon) values (?1, ?2, ?3, ?4, ?5)",
-                            params![id, country, population, lat, lon],
-                        )?;
-                    }
-                    DataEntry::CityLabel {
-                        id,
-                        lang,
-                        label,
-                        native_order,
-                    } => {
-                        tx.execute(
-                            "insert into cities_labels (id, lang, label, native_order) values (?1, ?2, ?3, ?4)",
-                            params![id, lang, label, native_order],
-                        )?;
-                    }
-                    DataEntry::Country { id, iso } => {
-                        tx.execute(
-                            "insert into countries (id, iso) values (?1, ?2)",
-                            params![id, iso],
-                        )?;
-                    }
-                }
+                insert_entry(&tx, item)?;
             }
-
             tx.commit()?;
         }
     }
 
+    if !item_buffer.is_empty() {
+        let tx = conn.transaction()?;
+        for item in item_buffer.drain(..) {
+            insert_entry(&tx, item)?;
+        }
+        tx.commit()?;
+    }
+
+    Ok(())
+}
+
+fn insert_entry(tx: &Transaction, entry: DataEntry) -> rusqlite::Result<()> {
+    match entry {
+        DataEntry::TerritorialEntity { id } => {
+            tx.execute(
+                "insert into territorial_entities (id) values (?1)",
+                params![id],
+            )?;
+        }
+        DataEntry::TerritorialEntityParent { id, parent } => {
+            tx.execute(
+                "insert into territorial_entities_parents (id, parent) values (?1, ?2) on conflict (id, parent) do nothing",
+                params![id, parent],
+            )?;
+        }
+        DataEntry::ObjectLanguage { id, lang_id } => {
+            tx.execute(
+                "insert into object_languages (id, lang_id) values (?1, ?2) on conflict (id, lang_id) do nothing",
+                params![id, lang_id],
+            )?;
+        }
+        DataEntry::Language { id, code } => {
+            tx.execute(
+                "insert into languages (id, code) values (?1, ?2)",
+                params![id, code],
+            )?;
+        }
+        DataEntry::City {
+            id,
+            country,
+            population,
+            lat,
+            lon,
+        } => {
+            tx.execute(
+                "insert into cities (id, country, population, lat, lon) values (?1, ?2, ?3, ?4, ?5)",
+                params![id, country, population, lat, lon],
+            )?;
+        }
+        DataEntry::CityLabel {
+            id,
+            lang,
+            label,
+            native_order,
+        } => {
+            tx.execute(
+                "insert into cities_labels (id, lang, label, native_order) values (?1, ?2, ?3, ?4)",
+                params![id, lang, label, native_order],
+            )?;
+        }
+        DataEntry::Country { id, iso } => {
+            tx.execute(
+                "insert into countries (id, iso) values (?1, ?2)",
+                params![id, iso],
+            )?;
+        }
+    }
     Ok(())
 }
