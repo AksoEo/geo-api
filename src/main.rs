@@ -52,10 +52,22 @@ fn main() {
             }
         });
 
+        let (cancel_send, cancel_recv) = crossbeam::channel::bounded(3);
+        ctrlc::set_handler(move || cancel_send.send(()).unwrap());
+
         let mut last_time = std::time::Instant::now();
         let mut last_bytes = 0;
         let mut line_number = 0;
         loop {
+            match cancel_recv.try_recv() {
+                Ok(()) => {
+                    debug!("received interrupt signal");
+                    break;
+                }
+                Err(crossbeam::channel::TryRecvError::Empty) => (),
+                Err(e) => panic!("unexpected error {}", e),
+            }
+
             line_number += 1;
             let line = match lines.next() {
                 Ok(line) => line,

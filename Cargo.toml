@@ -8,6 +8,7 @@ license = "GPL-3.0-or-later"
 log = "0.4"
 fern = "0.6"
 thiserror = "1.0"
+ctrlc = "3.2"
 
 rayon-core = "1.9"
 crossbeam = "0.8"
