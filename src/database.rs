@@ -63,14 +63,9 @@ pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
     )?;
     conn.execute(
         "create table if not exists object_languages (
-                entry_id integer not null primary key autoincrement,
                 id string not null,
                 lang_id string not null,
-                unique (id, lang_id))",
-        [],
-    )?;
-    conn.execute(
-        "create index if not exists object_languages_id_index on object_languages (id)",
+                primary key (id, lang_id))",
         [],
     )?;
     conn.execute(
@@ -94,14 +89,9 @@ pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
     )?;
     conn.execute(
         "create table if not exists territorial_entities_parents (
-                entry_id integer not null primary key autoincrement,
                 id string not null,
                 parent string not null,
-                unique (id, parent))",
-        [],
-    )?;
-    conn.execute(
-        "create index if not exists territorial_entities_parents_id_index on territorial_entities_parents (id)",
+                primary key (id, parent))",
         [],
     )?;
     conn.execute(
