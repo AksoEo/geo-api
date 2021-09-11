@@ -17,6 +17,7 @@ pub trait DataInput {
 
 pub struct InputLineIter<I> {
     pub input: I,
+    pub bytes_read: u64,
     line_buf: Vec<u8>,
     pending_lines: VecDeque<String>,
 }
@@ -30,6 +31,7 @@ where
     pub fn new(input: I) -> Self {
         InputLineIter {
             input,
+            bytes_read: 0,
             line_buf: Vec::with_capacity(ESTIMATED_LINE_SIZE),
             pending_lines: VecDeque::new(),
         }
@@ -47,10 +49,11 @@ where
     }
 
     pub fn next(&mut self) -> Result<String, LineIterError<I::Error>> {
-        let mut buf = [0; 1024];
+        let mut buf = [0; ESTIMATED_LINE_SIZE];
 
         while self.pending_lines.is_empty() {
             let bytes_read = self.input.read(&mut buf)?;
+            self.bytes_read += bytes_read as u64;
 
             let mut cursor = 0;
             for i in 0..bytes_read {

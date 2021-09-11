@@ -37,7 +37,7 @@ fn main() {
         let classes = Arc::new(match wiki_sparql::Classes::new_from_http() {
             Ok(classes) => classes,
             Err(e) => {
-                eprintln!("Failed to fetch classes: {}", e);
+                error!("Failed to fetch classes: {}", e);
                 exit(-1);
             }
         });
@@ -47,16 +47,18 @@ fn main() {
         let db_writer = std::thread::spawn(move || match database::db_writer(recv) {
             Ok(()) => (),
             Err(e) => {
-                eprintln!("database writer exited with error: {}", e);
+                error!("database writer exited with error: {}", e);
                 exit(-1);
             }
         });
 
         let (cancel_send, cancel_recv) = crossbeam::channel::bounded(3);
-        ctrlc::set_handler(move || cancel_send.send(()).unwrap());
+        ctrlc::set_handler(move || cancel_send.send(()).unwrap())
+            .expect("could not set interrupt handler");
 
         let mut last_time = std::time::Instant::now();
         let mut last_bytes = 0;
+        let mut last_dec_bytes = 0;
         let mut line_number = 0;
         loop {
             match cancel_recv.try_recv() {
@@ -73,7 +75,7 @@ fn main() {
                 Ok(line) => line,
                 Err(input::LineIterError::Eof) => break,
                 Err(e) => {
-                    eprintln!("line iterator error: {}", e);
+                    error!("line iterator error: {}", e);
                     exit(-1);
                 }
             };
@@ -83,7 +85,7 @@ fn main() {
             rayon_core::spawn(
                 move || match wiki_data_line::handle_line(&line, &classes2, &sink) {
                     Ok(()) => (),
-                    Err(e) => println!("ERROR PARSING LINE {}:{}\n{}\n\n", line_number, e, line),
+                    Err(e) => error!("error handling line {}:{}\n{}\n\n", line_number, e, line),
                 },
             );
 
@@ -91,6 +93,8 @@ fn main() {
             if elapsed.as_secs() > 10 {
                 let bytes_read =
                     (lines.input.bytes_read() - last_bytes) as f64 / elapsed.as_secs_f64();
+                let dec_bytes_read =
+                    (lines.bytes_read - last_dec_bytes) as f64 / elapsed.as_secs_f64();
                 let total_bytes = lines.input.content_length().unwrap_or(0);
                 let percent_complete = lines.input.bytes_read() as f64 / total_bytes as f64;
                 let mut eta = (total_bytes - lines.input.bytes_read()) as f64 / bytes_read / 60.;
@@ -106,15 +110,17 @@ fn main() {
                 }
 
                 eprintln!(
-                    "{:02.2}% (ETA: {:.1}{}) | {:.2} MB of {:.2} MB | currently {:.2} MB/s",
+                    "{:02.2}% (ETA: {:.1}{}) | {:.2} MB of {:.2} MB at {:.2} MB/s ({:.2} MB/s data)",
                     percent_complete * 100.,
                     eta,
                     eta_unit,
                     lines.input.bytes_read() as f64 / 1000_000.,
                     total_bytes as f64 / 1000_000.,
-                    bytes_read / 1000_000.
+                    bytes_read / 1000_000.,
+                    dec_bytes_read / 1000_000.,
                 );
                 last_bytes = lines.input.bytes_read();
+                last_dec_bytes = lines.bytes_read;
                 last_time = std::time::Instant::now();
             }
         }

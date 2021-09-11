@@ -22,6 +22,11 @@ fn handle_territorial_entity(obj: &Value, sink: &Sender<DataEntry>) -> Result<()
                     id: obj_id.into(),
                     parent: parent.into(),
                 })?;
+            } else {
+                debug!(
+                    "skipping TE {} P131 parent because it has no datavalue ID",
+                    obj_id
+                );
             }
         }
     }
@@ -40,6 +45,11 @@ fn handle_territorial_entity(obj: &Value, sink: &Sender<DataEntry>) -> Result<()
                     id: obj_id.into(),
                     lang_id: lang_id.into(),
                 })?;
+            } else {
+                debug!(
+                    "skipping TE {} P37 lang because it has no datavalue ID",
+                    obj_id
+                );
             }
         }
     }
@@ -47,31 +57,43 @@ fn handle_territorial_entity(obj: &Value, sink: &Sender<DataEntry>) -> Result<()
 }
 
 fn handle_language(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), HandleLineError> {
-    if let Some(wikipedia_code) =
+    let obj_id = json_get!(value(obj).id: string).unwrap();
+    if let Some(wikimedia_code) =
         json_get!(value(obj).claims.P424[0].mainsnak.datavalue.value: string)
     {
-        let obj_id = json_get!(value(obj).id: string).unwrap();
         sink.send(DataEntry::Language {
             id: obj_id.into(),
-            code: wikipedia_code.into(),
+            code: wikimedia_code.into(),
         })?;
+    } else {
+        // debug!("skipping lang {} because it has no wikimedia language code", obj_id);
     }
     Ok(())
 }
 
 fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), HandleLineError> {
+    let obj_id = json_get!(value(obj).id: string).unwrap();
     let country_entries = match json_get!(value(obj).claims.P17: array) {
         Some(country_entries) => country_entries,
-        None => return Ok(()), // we cannot use the entry without its country
+        None => {
+            debug!(
+                "skipping HS {} because it has no P17 country entries",
+                obj_id
+            );
+            return Ok(()); // we cannot use the entry without its country
+        }
     };
-
-    let obj_id = json_get!(value(obj).id: string).unwrap();
 
     let mut country_id = None;
     for country_entry in country_entries {
         if is_object_active(json_get!(value(country_entry).qualifiers: object)) {
             if let Some(id) = json_get!(value(country_entry).mainsnak.datavalue.value.id: string) {
                 country_id = Some(id.to_string());
+            } else {
+                debug!(
+                    "skipping HS {} P17 country entry because it has no datavalue id",
+                    obj_id
+                );
             }
         }
     }
@@ -95,17 +117,43 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                         if let Ok(time) = parse_wikidata_time(time, zone) {
                             new_population_time = Some(time);
                         }
+                    } else {
+                        debug!(
+                            "skipping {} P1082/P585 population entry because it has invalid time",
+                            obj_id
+                        );
                     }
+                } else {
+                    debug!(
+                        "skipping {} P1082/P585 population entry because it has no time value",
+                        obj_id
+                    );
                 }
+            } else {
+                // debug!("skipping {} P1082 population entry because it has no P585 entry", obj_id);
             }
 
-            if let (Some(old_time), Some(new_time)) = (&population_time, new_population_time) {
-                if new_time >= *old_time {
-                    if let Some(value) =
-                        json_get!(value(population_entry).mainsnak.datavalue.value.amount: u64)
-                    {
-                        population = Some(value);
-                        population_time = Some(new_time);
+            if let Some(new_time) = new_population_time {
+                if population_time.as_ref().map_or(true, |old| new_time >= *old) {
+                    if let (Some(value), Some(unit)) = (
+                        json_get!(value(population_entry).mainsnak.datavalue.value.amount: string),
+                        json_get!(value(population_entry).mainsnak.datavalue.value.unit: string),
+                    ) {
+                        // wikidata population is stored as "value" and "unit" strings
+                        // I don't know what unit does
+                        if unit != "1" {
+                            warn!("Skipping {} P1082 population entry because I don't know what unit != 1 does", obj_id);
+                            continue;
+                        }
+
+                        if let Ok(value) = value.parse() {
+                            population = Some(value);
+                            population_time = Some(new_time);
+                        } else {
+                            warn!("skipping {} P1082 population entry because its amount value could not be parsed to u64", obj_id);
+                        }
+                    } else {
+                        debug!("skipping {} P1082 population entry because its amount value is an unexpected type", obj_id);
                     }
                 }
             }
@@ -120,8 +168,15 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                 json_get!((coords).datavalue.value.longitude: number),
             ) {
                 lat_lon = Some((lat, lon));
+            } else {
+                debug!(
+                    "skipping {} lat/lon because lat/lon are invalid types",
+                    obj_id
+                );
             }
         }
+    } else {
+        // debug!("skipping {} lat/lon because it has no P625 entry", obj_id);
     }
 
     if let Some(country_id) = country_id {
@@ -134,11 +189,11 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
         })?;
     }
 
-    if let Some(labels) = json_get!(value(obj).labels: array) {
-        for label in labels {
+    if let Some(labels) = json_get!(value(obj).labels: object) {
+        for label in labels.values() {
             if let (Some(lang), Some(label)) = (
                 json_get!(value(label).language: string),
-                json_get!(value(label).label: string),
+                json_get!(value(label).value: string),
             ) {
                 sink.send(DataEntry::CityLabel {
                     id: obj_id.into(),
@@ -146,6 +201,8 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                     label: label.into(),
                     native_order: None,
                 })?;
+            } else {
+                debug!("skipping {} label because it has invalid type", obj_id);
             }
         }
     }
@@ -165,6 +222,11 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                     native_order: Some(native_order_index),
                 })?;
                 native_order_index += 1;
+            } else {
+                debug!(
+                    "skipping {} P1705 native label because it has invalid type",
+                    obj_id
+                );
             }
         }
     }
@@ -184,6 +246,11 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                     native_order: Some(native_order_index),
                 })?;
                 native_order_index += 1;
+            } else {
+                debug!(
+                    "skipping {} P1448 native label because it has invalid type",
+                    obj_id
+                );
             }
         }
     }
@@ -205,7 +272,7 @@ pub fn handle_line(
         line = &line[..line.len() - 1];
     }
     let obj: Value = serde_json::from_str(line)?;
-    let obj_id = json_get!(value(obj).id: string).unwrap();
+    let obj_id = json_get!(value(obj).id: string).expect("object has no id!");
 
     if let Some(code_entries) = json_get!(value(obj).claims.P297: array) {
         let mut code_entry = None;

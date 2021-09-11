@@ -63,16 +63,24 @@ pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
     )?;
     conn.execute(
         "create table if not exists object_languages (
+                entry_id integer not null primary key autoincrement,
                 id string not null,
                 lang_id string not null,
-                primary key (id, lang_id))",
+                unique (id, lang_id))",
+        [],
+    )?;
+    conn.execute(
+        "create index if not exists object_languages_id_index on object_languages (id)",
+        [],
+    )?;
+    conn.execute(
+        "create index if not exists object_languages_lang_id_index on object_languages (lang_id)",
         [],
     )?;
     conn.execute(
         "create table if not exists languages (
-                id string not null,
-                code string not null,
-                primary key (id, code))",
+                id string not null primary key,
+                code string not null)",
         [],
     )?;
     conn.execute(
@@ -86,9 +94,14 @@ pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
     )?;
     conn.execute(
         "create table if not exists territorial_entities_parents (
+                entry_id integer not null primary key autoincrement,
                 id string not null,
                 parent string not null,
-                primary key (id, parent))",
+                unique (id, parent))",
+        [],
+    )?;
+    conn.execute(
+        "create index if not exists territorial_entities_parents_id_index on territorial_entities_parents (id)",
         [],
     )?;
     conn.execute(
@@ -105,12 +118,32 @@ pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
         [],
     )?;
     conn.execute(
+        "create index if not exists cities_country_index on cities (country)",
+        [],
+    )?;
+    conn.execute(
+        "create index if not exists cities_population_index on cities (population)",
+        [],
+    )?;
+    conn.execute(
+        "create index if not exists cities_lat_index on cities (lat)",
+        [],
+    )?;
+    conn.execute(
+        "create index if not exists cities_lon_index on cities (lon)",
+        [],
+    )?;
+    conn.execute(
         "create table if not exists cities_labels (
                 id string not null,
                 lang string not null,
                 native_order integer,
                 label string not null,
                 primary key (id, lang, native_order))",
+        [],
+    )?;
+    conn.execute(
+        "create index if not exists cities_labels_label_index on cities_labels (label)",
         [],
     )?;
     conn.execute(
