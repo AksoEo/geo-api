@@ -130,6 +130,19 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                 // debug!("skipping {} P1082 population entry because it has no P585 entry", obj_id);
             }
 
+            if let Some(_) = json_get!(value(population_entry).qualifiers.P518[0]: object) {
+                // "applies to part" - but we want the entire population
+                new_population_time = None; // reset to none
+            }
+            if let Some(_) = json_get!(value(population_entry).qualifiers.P1539[0]: object) {
+                // this is only the female population
+                new_population_time = None; // reset to none
+            }
+            if let Some(_) = json_get!(value(population_entry).qualifiers.P1540[0]: object) {
+                // this is only the male population
+                new_population_time = None; // reset to none
+            }
+
             if let Some(new_time) = new_population_time {
                 if population_time
                     .as_ref()
@@ -140,9 +153,8 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                         json_get!(value(population_entry).mainsnak.datavalue.value.unit: string),
                     ) {
                         // wikidata population is stored as "value" and "unit" strings
-                        // I don't know what unit does
                         if unit != "1" {
-                            warn!("Skipping {} P1082 population entry because I don't know what unit != 1 does", obj_id);
+                            // population is unitless!
                             continue;
                         }
 
