@@ -36,6 +36,7 @@ pub enum DataEntry {
         id: String,
         iso: String,
     },
+    MissingP17 { id: String },
 }
 
 pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
@@ -144,6 +145,10 @@ pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
         "create index if not exists cities_labels_native_order_index on cities_labels (native_order)",
         [],
     )?;
+    conn.execute(
+        "create table if not exists missing_p17 (id string not null primary key)",
+        [],
+    )?;
 
     debug!("Database set up");
 
@@ -234,6 +239,12 @@ fn insert_entry(tx: &Transaction, entry: DataEntry) -> rusqlite::Result<()> {
                 params![id, iso],
             )?;
         }
+        DataEntry::MissingP17 { id } => {
+            tx.execute(
+                "insert into missing_p17 (id) values (?1)",
+                params![id],
+            )?;
+        },
     }
     Ok(())
 }

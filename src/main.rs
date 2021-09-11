@@ -70,6 +70,7 @@ fn main() {
                 Err(e) => panic!("unexpected error {}", e),
             }
 
+            let line_offset = lines.bytes_read;
             line_number += 1;
             let line = match lines.next() {
                 Ok(line) => line,
@@ -85,7 +86,10 @@ fn main() {
             rayon_core::spawn(
                 move || match wiki_data_line::handle_line(&line, &classes2, &sink) {
                     Ok(()) => (),
-                    Err(e) => error!("error handling line {}:{}\n{}\n\n", line_number, e, line),
+                    Err(e) => error!(
+                        "error handling line {} at offset {}:{}\n\n",
+                        line_number, line_offset, e
+                    ),
                 },
             );
 

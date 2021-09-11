@@ -76,10 +76,7 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
     let country_entries = match json_get!(value(obj).claims.P17: array) {
         Some(country_entries) => country_entries,
         None => {
-            debug!(
-                "skipping HS {} because it has no P17 country entries",
-                obj_id
-            );
+            sink.send(DataEntry::MissingP17 { id: obj_id.into() })?;
             return Ok(()); // we cannot use the entry without its country
         }
     };
@@ -134,7 +131,10 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
             }
 
             if let Some(new_time) = new_population_time {
-                if population_time.as_ref().map_or(true, |old| new_time >= *old) {
+                if population_time
+                    .as_ref()
+                    .map_or(true, |old| new_time >= *old)
+                {
                     if let (Some(value), Some(unit)) = (
                         json_get!(value(population_entry).mainsnak.datavalue.value.amount: string),
                         json_get!(value(population_entry).mainsnak.datavalue.value.unit: string),
@@ -307,12 +307,13 @@ pub fn handle_line(
 
     let is_territorial_entity = is_subclass_of(&obj, &classes.territorial_entities);
     let is_human_settlement = is_subclass_of(&obj, &classes.human_settlements);
+    let is_lost_city = is_subclass_of(&obj, &classes.lost_cities);
     let is_language = is_subclass_of(&obj, &classes.languages);
 
-    if is_territorial_entity {
+    if is_territorial_entity && !is_lost_city {
         handle_territorial_entity(&obj, sink)?;
     }
-    if is_human_settlement {
+    if is_human_settlement && !is_lost_city {
         handle_human_settlement(&obj, sink)?;
     }
     if is_language {

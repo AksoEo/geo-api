@@ -69,6 +69,7 @@ pub fn load_subclasses(parent_class: &str) -> reqwest::Result<HashSet<String>> {
 pub struct Classes {
     pub territorial_entities: HashSet<String>,
     pub human_settlements: HashSet<String>,
+    pub lost_cities: HashSet<String>,
     pub languages: HashSet<String>,
 }
 
@@ -80,12 +81,16 @@ impl Classes {
         let mut human_settlements = load_subclasses("Q486972")?;
         human_settlements.insert("Q486972".into());
 
+        let mut lost_cities = load_subclasses("Q2974842")?;
+        lost_cities.insert("Q2974842".into());
+
         let mut languages = HashSet::new();
         languages.insert("Q34770".into());
 
         Ok(Classes {
             human_settlements,
             territorial_entities,
+            lost_cities,
             languages,
         })
     }
