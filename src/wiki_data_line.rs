@@ -39,8 +39,8 @@ fn handle_territorial_entity(
     }
 
     if let Some(langs) = json_get!(value(obj).claims.P37: array) {
+        let mut lang_index = 0;
         for lang in langs {
-            // official language
             if json_get!(value(lang).mainsnak.snaktype: string) != Some("value") {
                 continue;
             }
@@ -51,7 +51,9 @@ fn handle_territorial_entity(
                 sink.send(DataEntry::ObjectLanguage {
                     id: obj_id.into(),
                     lang_id: lang_id.into(),
+                    index: lang_index,
                 })?;
+                lang_index += 1;
             } else {
                 debug!(
                     "skipping TE {} P37 lang because it has no datavalue ID",
@@ -327,16 +329,19 @@ pub fn handle_line(
             })?;
         }
 
+        let mut lang_index = 0;
         if let Some(langs) = json_get!(value(obj).claims.P37: array) {
             for lang in langs {
-                if is_object_active(json_get!(value(lang).qualifiers: object)) {
+                if !is_object_active(json_get!(value(lang).qualifiers: object)) {
                     continue;
                 }
                 if let Some(lang_id) = json_get!(value(lang).mainsnak.datavalue.value.id: string) {
                     sink.send(DataEntry::ObjectLanguage {
                         id: obj_id.into(),
                         lang_id: lang_id.into(),
+                        index: lang_index,
                     })?;
+                    lang_index += 1;
                 }
             }
         }
@@ -344,16 +349,14 @@ pub fn handle_line(
 
     let is_territorial_entity = is_subclass_of(&obj, &classes.territorial_entities);
     let is_human_settlement = is_subclass_of(&obj, &classes.human_settlements);
-    let is_lost_city = is_subclass_of(&obj, &classes.lost_cities);
-    // exclude neighborhoods because they include stuff like shipyards
-    let is_neighborhood = is_subclass_of(&obj, &classes.neighborhoods);
+    let is_excluded = is_subclass_of(&obj, &classes.excluded);
     let is_language = is_subclass_of(&obj, &classes.languages);
 
-    if is_territorial_entity && !is_lost_city && !is_neighborhood {
+    if is_territorial_entity && !is_excluded {
         let is_2nd = is_subclass_of(&obj, &classes.second_level_admin_div);
         handle_territorial_entity(&obj, is_2nd, sink)?;
     }
-    if is_human_settlement && !is_lost_city && !is_neighborhood {
+    if is_human_settlement && !is_excluded {
         handle_human_settlement(&obj, sink)?;
     }
     if is_language {

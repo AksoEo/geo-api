@@ -69,8 +69,7 @@ pub fn load_subclasses(parent_class: &str) -> reqwest::Result<HashSet<String>> {
 pub struct Classes {
     pub territorial_entities: HashSet<String>,
     pub human_settlements: HashSet<String>,
-    pub lost_cities: HashSet<String>,
-    pub neighborhoods: HashSet<String>,
+    pub excluded: HashSet<String>,
     pub second_level_admin_div: HashSet<String>,
     pub languages: HashSet<String>,
 }
@@ -83,14 +82,16 @@ impl Classes {
         let mut human_settlements = load_subclasses("Q486972")?;
         human_settlements.insert("Q486972".into());
 
-        let mut lost_cities = load_subclasses("Q2974842")?;
-        lost_cities.insert("Q2974842".into());
+        let mut excluded: HashSet<String> = HashSet::new();
+        excluded.insert("Q2974842".into()); // lost cities
+        excluded.insert("Q123705".into()); // neighborhoods, including stuff like shipyards
+        excluded.insert("Q19953632".into()); // former administrative territorial entities
 
-        let mut lost_cities = load_subclasses("Q2974842")?;
-        lost_cities.insert("Q2974842".into());
-
-        let mut neighborhoods = load_subclasses("Q123705")?;
-        neighborhoods.insert("Q123705".into());
+        for superclass in excluded.clone() {
+            for subclass in load_subclasses(&superclass)? {
+                excluded.insert(subclass);
+            }
+        }
 
         let mut second_level_admin_div = load_subclasses("Q13220204")?;
         second_level_admin_div.insert("Q13220204".into());
@@ -101,8 +102,7 @@ impl Classes {
         Ok(Classes {
             human_settlements,
             territorial_entities,
-            lost_cities,
-            neighborhoods,
+            excluded,
             second_level_admin_div,
             languages,
         })

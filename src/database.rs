@@ -15,6 +15,7 @@ pub enum DataEntry {
     ObjectLanguage {
         id: String,
         lang_id: String,
+        index: u32,
     },
     Language {
         id: String,
@@ -69,6 +70,7 @@ pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
         "create table if not exists object_languages (
                 id string not null,
                 lang_id string not null,
+                lang_index integer not null,
                 primary key (id, lang_id))",
         [],
     )?;
@@ -202,10 +204,10 @@ fn insert_entry(tx: &Transaction, entry: DataEntry) -> rusqlite::Result<()> {
                 params![id, parent],
             )?;
         }
-        DataEntry::ObjectLanguage { id, lang_id } => {
+        DataEntry::ObjectLanguage { id, lang_id, index } => {
             tx.execute(
-                "insert into object_languages (id, lang_id) values (?1, ?2) on conflict (id, lang_id) do nothing",
-                params![id, lang_id],
+                "insert into object_languages (id, lang_id, lang_index) values (?1, ?2, ?3) on conflict (id, lang_id) do nothing",
+                params![id, lang_id, index],
             )?;
         }
         DataEntry::Language { id, code } => {
