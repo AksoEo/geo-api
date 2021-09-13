@@ -7,9 +7,16 @@ use serde_json::Value;
 use std::collections::HashSet;
 use thiserror::Error;
 
-fn handle_territorial_entity(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), HandleLineError> {
+fn handle_territorial_entity(
+    obj: &Value,
+    is_2nd: bool,
+    sink: &Sender<DataEntry>,
+) -> Result<(), HandleLineError> {
     let obj_id = json_get!(value(obj).id: string).unwrap();
-    sink.send(DataEntry::TerritorialEntity { id: obj_id.into() })?;
+    sink.send(DataEntry::TerritorialEntity {
+        id: obj_id.into(),
+        is_2nd,
+    })?;
 
     if let Some(parents) = json_get!(value(obj).claims.P131: array) {
         for parent in parents {
@@ -53,6 +60,25 @@ fn handle_territorial_entity(obj: &Value, sink: &Sender<DataEntry>) -> Result<()
             }
         }
     }
+
+    if let Some(labels) = json_get!(value(obj).labels: object) {
+        for label in labels.values() {
+            if let (Some(lang), Some(label)) = (
+                json_get!(value(label).language: string),
+                json_get!(value(label).value: string),
+            ) {
+                sink.send(DataEntry::ObjectLabel {
+                    id: obj_id.into(),
+                    lang: lang.into(),
+                    label: label.into(),
+                    native_order: None,
+                })?;
+            } else {
+                debug!("skipping {} label because it has invalid type", obj_id);
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -207,7 +233,7 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                 json_get!(value(label).language: string),
                 json_get!(value(label).value: string),
             ) {
-                sink.send(DataEntry::CityLabel {
+                sink.send(DataEntry::ObjectLabel {
                     id: obj_id.into(),
                     lang: lang.into(),
                     label: label.into(),
@@ -227,7 +253,7 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                 json_get!(value(claim).mainsnak.datavalue.value.language: string),
                 json_get!(value(claim).mainsnak.datavalue.value.text: string),
             ) {
-                sink.send(DataEntry::CityLabel {
+                sink.send(DataEntry::ObjectLabel {
                     id: obj_id.into(),
                     lang: lang.into(),
                     label: label.into(),
@@ -241,8 +267,7 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                 );
             }
         }
-    }
-    if let Some(official_names) = json_get!(value(obj).claims.P1448: array) {
+    } else if let Some(official_names) = json_get!(value(obj).claims.P1448: array) {
         for claim in official_names {
             if !is_object_active(json_get!(value(claim).qualifiers: object)) {
                 continue;
@@ -251,7 +276,7 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                 json_get!(value(claim).mainsnak.datavalue.value.language: string),
                 json_get!(value(claim).mainsnak.datavalue.value.text: string),
             ) {
-                sink.send(DataEntry::CityLabel {
+                sink.send(DataEntry::ObjectLabel {
                     id: obj_id.into(),
                     lang: lang.into(),
                     label: label.into(),
@@ -320,12 +345,15 @@ pub fn handle_line(
     let is_territorial_entity = is_subclass_of(&obj, &classes.territorial_entities);
     let is_human_settlement = is_subclass_of(&obj, &classes.human_settlements);
     let is_lost_city = is_subclass_of(&obj, &classes.lost_cities);
+    // exclude neighborhoods because they include stuff like shipyards
+    let is_neighborhood = is_subclass_of(&obj, &classes.neighborhoods);
     let is_language = is_subclass_of(&obj, &classes.languages);
 
-    if is_territorial_entity && !is_lost_city {
-        handle_territorial_entity(&obj, sink)?;
+    if is_territorial_entity && !is_lost_city && !is_neighborhood {
+        let is_2nd = is_subclass_of(&obj, &classes.second_level_admin_div);
+        handle_territorial_entity(&obj, is_2nd, sink)?;
     }
-    if is_human_settlement && !is_lost_city {
+    if is_human_settlement && !is_lost_city && !is_neighborhood {
         handle_human_settlement(&obj, sink)?;
     }
     if is_language {

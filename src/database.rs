@@ -6,6 +6,7 @@ use std::collections::VecDeque;
 pub enum DataEntry {
     TerritorialEntity {
         id: String,
+        is_2nd: bool,
     },
     TerritorialEntityParent {
         id: String,
@@ -26,7 +27,7 @@ pub enum DataEntry {
         lat: Option<f64>,
         lon: Option<f64>,
     },
-    CityLabel {
+    ObjectLabel {
         id: String,
         lang: String,
         label: String,
@@ -36,7 +37,9 @@ pub enum DataEntry {
         id: String,
         iso: String,
     },
-    MissingP17 { id: String },
+    MissingP17 {
+        id: String,
+    },
 }
 
 pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
@@ -85,7 +88,8 @@ pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
     )?;
     conn.execute(
         "create table if not exists territorial_entities (
-                id string not null primary key)",
+                id string not null primary key,
+                is_2nd boolean not null)",
         [],
     )?;
     conn.execute(
@@ -125,7 +129,7 @@ pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
         [],
     )?;
     conn.execute(
-        "create table if not exists cities_labels (
+        "create table if not exists object_labels (
                 id string not null,
                 lang string not null,
                 native_order integer,
@@ -134,15 +138,15 @@ pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
         [],
     )?;
     conn.execute(
-        "create index if not exists cities_labels_label_index on cities_labels (label)",
+        "create index if not exists object_labels_label_index on object_labels (label)",
         [],
     )?;
     conn.execute(
-        "create index if not exists cities_labels_lang_index on cities_labels (lang)",
+        "create index if not exists object_labels_lang_index on object_labels (lang)",
         [],
     )?;
     conn.execute(
-        "create index if not exists cities_labels_native_order_index on cities_labels (native_order)",
+        "create index if not exists object_labels_native_order_index on object_labels (native_order)",
         [],
     )?;
     conn.execute(
@@ -186,10 +190,10 @@ pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
 
 fn insert_entry(tx: &Transaction, entry: DataEntry) -> rusqlite::Result<()> {
     match entry {
-        DataEntry::TerritorialEntity { id } => {
+        DataEntry::TerritorialEntity { id, is_2nd } => {
             tx.execute(
-                "insert into territorial_entities (id) values (?1)",
-                params![id],
+                "insert into territorial_entities (id, is_2nd) values (?1, ?2)",
+                params![id, is_2nd],
             )?;
         }
         DataEntry::TerritorialEntityParent { id, parent } => {
@@ -222,14 +226,14 @@ fn insert_entry(tx: &Transaction, entry: DataEntry) -> rusqlite::Result<()> {
                 params![id, country, population, lat, lon],
             )?;
         }
-        DataEntry::CityLabel {
+        DataEntry::ObjectLabel {
             id,
             lang,
             label,
             native_order,
         } => {
             tx.execute(
-                "insert into cities_labels (id, lang, label, native_order) values (?1, ?2, ?3, ?4)",
+                "insert into object_labels (id, lang, label, native_order) values (?1, ?2, ?3, ?4)",
                 params![id, lang, label, native_order],
             )?;
         }
@@ -240,11 +244,8 @@ fn insert_entry(tx: &Transaction, entry: DataEntry) -> rusqlite::Result<()> {
             )?;
         }
         DataEntry::MissingP17 { id } => {
-            tx.execute(
-                "insert into missing_p17 (id) values (?1)",
-                params![id],
-            )?;
-        },
+            tx.execute("insert into missing_p17 (id) values (?1)", params![id])?;
+        }
     }
     Ok(())
 }

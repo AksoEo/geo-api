@@ -70,6 +70,8 @@ pub struct Classes {
     pub territorial_entities: HashSet<String>,
     pub human_settlements: HashSet<String>,
     pub lost_cities: HashSet<String>,
+    pub neighborhoods: HashSet<String>,
+    pub second_level_admin_div: HashSet<String>,
     pub languages: HashSet<String>,
 }
 
@@ -84,6 +86,15 @@ impl Classes {
         let mut lost_cities = load_subclasses("Q2974842")?;
         lost_cities.insert("Q2974842".into());
 
+        let mut lost_cities = load_subclasses("Q2974842")?;
+        lost_cities.insert("Q2974842".into());
+
+        let mut neighborhoods = load_subclasses("Q123705")?;
+        neighborhoods.insert("Q123705".into());
+
+        let mut second_level_admin_div = load_subclasses("Q13220204")?;
+        second_level_admin_div.insert("Q13220204".into());
+
         let mut languages = HashSet::new();
         languages.insert("Q34770".into());
 
@@ -91,6 +102,8 @@ impl Classes {
             human_settlements,
             territorial_entities,
             lost_cities,
+            neighborhoods,
+            second_level_admin_div,
             languages,
         })
     }
