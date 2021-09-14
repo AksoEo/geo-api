@@ -9,6 +9,7 @@ use std::sync::Arc;
 mod database;
 mod input;
 mod json;
+mod post;
 mod wiki_data_line;
 mod wiki_sparql;
 mod wiki_time;
@@ -42,6 +43,17 @@ fn main() {
                         .required(true),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("post")
+                .about("performs post-processing on the database")
+                .arg(
+                    Arg::with_name("database")
+                        .help("the database file")
+                        .index(1)
+                        .takes_value(true)
+                        .default_value("geo.db"),
+                ),
+        )
         .get_matches();
 
     let colors = fern::colors::ColoredLevelConfig::new();
@@ -69,6 +81,13 @@ fn main() {
         ("entity", Some(args)) => {
             let ids = args.values_of("entity").expect("no entity id");
             match debug_entities(ids) {
+                Ok(()) => {}
+                Err(e) => error!("{}", e),
+            }
+        }
+        ("post", Some(args)) => {
+            let db_file = args.value_of("database").expect("no database file");
+            match post::run(db_file) {
                 Ok(()) => {}
                 Err(e) => error!("{}", e),
             }
