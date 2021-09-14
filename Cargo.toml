@@ -6,9 +6,10 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 log = "0.4"
-fern = "0.6"
+fern = { version = "0.6", features = ["colored"] }
 thiserror = "1.0"
 ctrlc = "3.2"
+clap = "2.33"
 
 rayon-core = "1.9"
 crossbeam = "0.8"

@@ -16,8 +16,6 @@ pub enum TimeParseError {
     DateTooShort,
     #[error("datetime has no date dash")]
     NoDateDash,
-    #[error("invalid date")]
-    InvalidDate,
     #[error("invalid time")]
     InvalidTime,
     #[error("int parse error: {0}")]

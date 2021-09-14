@@ -43,9 +43,9 @@ pub enum DataEntry {
     },
 }
 
-pub fn db_writer(recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
+pub fn db_writer(out_file: &str, recv: Receiver<DataEntry>) -> rusqlite::Result<()> {
     debug!("Setting up database");
-    let mut conn = Connection::open("./geo.db")?;
+    let mut conn = Connection::open(out_file)?;
 
     // since we are just writing to a blank database,
     // we can tune sqlite for speed at the expense of safety

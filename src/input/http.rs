@@ -18,6 +18,7 @@ pub struct HttpDataInput<B> {
 }
 
 pub type HttpBz2DataInput = HttpDataInput<BzDecoder<Response>>;
+#[allow(dead_code)]
 pub type HttpParBz2DataInput = HttpDataInput<ParBzDecoder<Response>>;
 
 /// HttpDataInput state. Exists during download.

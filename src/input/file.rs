@@ -8,13 +8,16 @@ pub struct FileInput<B> {
     size: u64,
 }
 
+#[allow(dead_code)]
 pub type Bz2FileInput = FileInput<BzDecoder<fs::File>>;
+#[allow(dead_code)]
 pub type ParBz2FileInput = FileInput<ParBzDecoder<fs::File>>;
 
 impl<B> FileInput<B>
 where
     B: DecompressingReader<fs::File>,
 {
+    #[allow(dead_code)]
     pub fn new(file: fs::File) -> Self {
         let size = file.metadata().unwrap().len();
 

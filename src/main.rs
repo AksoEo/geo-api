@@ -2,6 +2,7 @@
 extern crate log;
 
 use crate::input::DataInput;
+use clap::{App, Arg, SubCommand};
 use std::process::exit;
 use std::sync::Arc;
 
@@ -13,27 +14,80 @@ mod wiki_sparql;
 mod wiki_time;
 
 fn main() {
+    let matches = App::new("geo-db")
+        .about("streams the latest WikiData dump and saves it to a file")
+        .arg(
+            Arg::with_name("out")
+                .short("o")
+                .long("output")
+                .help("Sets the output file")
+                .takes_value(true)
+                .default_value("geo.db"),
+        )
+        .arg(
+            Arg::with_name("verbose")
+                .short("v")
+                .long("verbose")
+                .help("Prints debug info"),
+        )
+        .subcommand(
+            SubCommand::with_name("entity")
+                .about("loads a single entity and prints generated database entries")
+                .arg(
+                    Arg::with_name("entity")
+                        .help("the entity id(s) (including Q)")
+                        .index(1)
+                        .takes_value(true)
+                        .multiple(true)
+                        .required(true),
+                ),
+        )
+        .get_matches();
+
+    let colors = fern::colors::ColoredLevelConfig::new();
     fern::Dispatch::new()
         .format(move |out, msg, record| {
             out.finish(format_args!(
-                "[{} {}] {}",
+                "{}\x1b[{}m[{} {}] {}",
+                chrono::Local::now().format("[%H:%M:%S]"),
+                colors.get_color(&record.level()).to_fg_str(),
                 record.level(),
                 record.target(),
                 msg
             ))
         })
-        .level(log::LevelFilter::Debug)
+        .level(if matches.is_present("verbose") {
+            log::LevelFilter::Debug
+        } else {
+            log::LevelFilter::Info
+        })
         .chain(std::io::stdout())
         .apply()
         .unwrap();
 
-    let url = "https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2";
+    match matches.subcommand() {
+        ("entity", Some(args)) => {
+            let ids = args.values_of("entity").expect("no entity id");
+            match debug_entities(ids) {
+                Ok(()) => {}
+                Err(e) => error!("{}", e),
+            }
+        }
+        _ => {
+            let out_file = matches.value_of("out").expect("no output file");
+            run(out_file.into());
+        }
+    }
+}
 
+fn run(out_file: String) {
+    let url = "https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2";
     let db_writer = {
         let data_input = input::http::HttpBz2DataInput::new(url.into());
         // let data_input = input::file::Bz2FileInput::new(std::fs::File::open(file).unwrap());
         let mut lines = input::InputLineIter::new(data_input);
 
+        info!("Loading classes");
         let classes = Arc::new(match wiki_sparql::Classes::new_from_http() {
             Ok(classes) => classes,
             Err(e) => {
@@ -42,9 +96,11 @@ fn main() {
             }
         });
 
+        info!("Streaming data from {} to {}", url, out_file);
+
         let (send, recv) = crossbeam::channel::unbounded();
 
-        let db_writer = std::thread::spawn(move || match database::db_writer(recv) {
+        let db_writer = std::thread::spawn(move || match database::db_writer(&out_file, recv) {
             Ok(()) => (),
             Err(e) => {
                 error!("database writer exited with error: {}", e);
@@ -113,7 +169,7 @@ fn main() {
                     }
                 }
 
-                eprintln!(
+                info!(
                     "{:02.2}% (ETA: {:.1}{}) | {:.2} MB of {:.2} MB at {:.2} MB/s ({:.2} MB/s data)",
                     percent_complete * 100.,
                     eta,
@@ -134,5 +190,47 @@ fn main() {
 
     debug!("Waiting for DB writer to join");
     db_writer.join().unwrap();
-    debug!("Done!");
+    info!("Done!");
+}
+
+fn debug_entities<'a>(ids: impl Iterator<Item = &'a str>) -> reqwest::Result<()> {
+    info!("Loading classes");
+    let classes = wiki_sparql::Classes::new_from_http()?;
+
+    for id in ids {
+        let url = format!("https://wikidata.org/wiki/Special:EntityData/{}.json", id);
+        let json: serde_json::Value = match reqwest::blocking::get(url).and_then(|res| res.json()) {
+            Ok(json) => json,
+            Err(e) => {
+                error!("Failed to fetch entity {}: {}", id, e);
+                continue;
+            }
+        };
+        if let Some(entity) = json
+            .as_object()
+            .and_then(|root| root.get("entities"))
+            .and_then(|entities| entities.as_object())
+            .and_then(|entities| entities.get(id))
+            .and_then(|entity| serde_json::to_string(entity).ok())
+        {
+            info!("Entity {}", id);
+
+            let (send, recv) = crossbeam::channel::unbounded();
+            match wiki_data_line::handle_line(&entity, &classes, &send) {
+                Ok(()) => {}
+                Err(e) => {
+                    error!("{}", e);
+                }
+            }
+
+            while let Ok(entry) = recv.try_recv() {
+                info!("{}: {:#?}", id, entry);
+            }
+        } else {
+            error!("Entity {}: invalid data", id);
+        }
+    }
+
+    info!("Done!");
+    Ok(())
 }

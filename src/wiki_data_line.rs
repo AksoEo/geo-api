@@ -7,17 +7,9 @@ use serde_json::Value;
 use std::collections::HashSet;
 use thiserror::Error;
 
-fn handle_territorial_entity(
-    obj: &Value,
-    is_2nd: bool,
-    sink: &Sender<DataEntry>,
-) -> Result<(), HandleLineError> {
+/// both human settlements and territorial entities
+fn handle_place(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), HandleLineError> {
     let obj_id = json_get!(value(obj).id: string).unwrap();
-    sink.send(DataEntry::TerritorialEntity {
-        id: obj_id.into(),
-        is_2nd,
-    })?;
-
     if let Some(parents) = json_get!(value(obj).claims.P131: array) {
         for parent in parents {
             if !is_object_active(json_get!(value(parent).qualifiers: object)) {
@@ -30,13 +22,28 @@ fn handle_territorial_entity(
                     parent: parent.into(),
                 })?;
             } else {
-                debug!(
+                warn!(
                     "skipping TE {} P131 parent because it has no datavalue ID",
                     obj_id
                 );
             }
         }
     }
+    Ok(())
+}
+
+fn handle_territorial_entity(
+    obj: &Value,
+    is_2nd: bool,
+    sink: &Sender<DataEntry>,
+) -> Result<(), HandleLineError> {
+    let obj_id = json_get!(value(obj).id: string).unwrap();
+    sink.send(DataEntry::TerritorialEntity {
+        id: obj_id.into(),
+        is_2nd,
+    })?;
+
+    handle_place(obj, sink)?;
 
     if let Some(langs) = json_get!(value(obj).claims.P37: array) {
         let mut lang_index = 0;
@@ -55,7 +62,7 @@ fn handle_territorial_entity(
                 })?;
                 lang_index += 1;
             } else {
-                debug!(
+                warn!(
                     "skipping TE {} P37 lang because it has no datavalue ID",
                     obj_id
                 );
@@ -76,7 +83,7 @@ fn handle_territorial_entity(
                     native_order: None,
                 })?;
             } else {
-                debug!("skipping {} label because it has invalid type", obj_id);
+                warn!("skipping {} label because it has invalid type", obj_id);
             }
         }
     }
@@ -94,7 +101,7 @@ fn handle_language(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), HandleLi
             code: wikimedia_code.into(),
         })?;
     } else {
-        // debug!("skipping lang {} because it has no wikimedia language code", obj_id);
+        // warn!("skipping lang {} because it has no wikimedia language code", obj_id);
     }
     Ok(())
 }
@@ -109,13 +116,15 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
         }
     };
 
+    handle_place(obj, sink)?;
+
     let mut country_id = None;
     for country_entry in country_entries {
         if is_object_active(json_get!(value(country_entry).qualifiers: object)) {
             if let Some(id) = json_get!(value(country_entry).mainsnak.datavalue.value.id: string) {
                 country_id = Some(id.to_string());
             } else {
-                debug!(
+                warn!(
                     "skipping HS {} P17 country entry because it has no datavalue id",
                     obj_id
                 );
@@ -143,19 +152,19 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                             new_population_time = Some(time);
                         }
                     } else {
-                        debug!(
+                        warn!(
                             "skipping {} P1082/P585 population entry because it has invalid time",
                             obj_id
                         );
                     }
                 } else {
-                    debug!(
+                    warn!(
                         "skipping {} P1082/P585 population entry because it has no time value",
                         obj_id
                     );
                 }
             } else {
-                // debug!("skipping {} P1082 population entry because it has no P585 entry", obj_id);
+                // warn!("skipping {} P1082 population entry because it has no P585 entry", obj_id);
             }
 
             if let Some(_) = json_get!(value(population_entry).qualifiers.P518[0]: object) {
@@ -193,7 +202,7 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                             warn!("skipping {} P1082 population entry because its amount value could not be parsed to u64", obj_id);
                         }
                     } else {
-                        debug!("skipping {} P1082 population entry because its amount value is an unexpected type", obj_id);
+                        warn!("skipping {} P1082 population entry because its amount value is an unexpected type", obj_id);
                     }
                 }
             }
@@ -209,14 +218,14 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
             ) {
                 lat_lon = Some((lat, lon));
             } else {
-                debug!(
+                warn!(
                     "skipping {} lat/lon because lat/lon are invalid types",
                     obj_id
                 );
             }
         }
     } else {
-        // debug!("skipping {} lat/lon because it has no P625 entry", obj_id);
+        // warn!("skipping {} lat/lon because it has no P625 entry", obj_id);
     }
 
     if let Some(country_id) = country_id {
@@ -242,7 +251,7 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                     native_order: None,
                 })?;
             } else {
-                debug!("skipping {} label because it has invalid type", obj_id);
+                warn!("skipping {} label because it has invalid type", obj_id);
             }
         }
     }
@@ -263,7 +272,7 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                 })?;
                 native_order_index += 1;
             } else {
-                debug!(
+                warn!(
                     "skipping {} P1705 native label because it has invalid type",
                     obj_id
                 );
@@ -286,7 +295,7 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                 })?;
                 native_order_index += 1;
             } else {
-                debug!(
+                warn!(
                     "skipping {} P1448 native label because it has invalid type",
                     obj_id
                 );
