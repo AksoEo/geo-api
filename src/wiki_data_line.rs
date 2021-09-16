@@ -199,14 +199,14 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
                             continue;
                         }
 
-                        if let Ok(value) = value.parse() {
+                        if let Some(value) = parse_quantity(value) {
                             population = Some(value);
                             population_time = Some(new_time);
                         } else {
-                            warn!("skipping {} P1082 population entry because its amount value could not be parsed to u64", obj_id);
+                            warn!("skipping {} P1082 population entry because its amount value could not be parsed as a number", obj_id);
                         }
                     } else {
-                        warn!("skipping {} P1082 population entry because its amount value is an unexpected type", obj_id);
+                        warn!("skipping {} P1082 population entry because its amount value either does not exist or is an unexpected type", obj_id);
                     }
                 }
             }
@@ -407,4 +407,22 @@ pub enum HandleLineError {
     Json(#[from] serde_json::Error),
     #[error("crossbeam channel send error: {0}")]
     Sink(#[from] crossbeam::channel::SendError<DataEntry>),
+}
+
+fn parse_quantity(n: &str) -> Option<u64> {
+    let should_keep_char = |c: &char| match c {
+        c if c.is_whitespace() => false,
+        ',' | '.' | '+' => false, // thousands separators
+        _ => true,
+    };
+
+    if n.contains(|c| !should_keep_char(&c)) {
+        n.chars()
+            .filter(should_keep_char)
+            .collect::<String>()
+            .parse()
+            .ok()
+    } else {
+        n.parse().ok()
+    }
 }

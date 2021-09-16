@@ -60,7 +60,7 @@ fn main() {
     fern::Dispatch::new()
         .format(move |out, msg, record| {
             out.finish(format_args!(
-                "{}\x1b[{}m[{} {}] {}",
+                "{}\x1b[{}m[{} {}] {}\x1b[m",
                 chrono::Local::now().format("[%H:%M:%S]"),
                 colors.get_color(&record.level()).to_fg_str(),
                 record.level(),
