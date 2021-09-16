@@ -108,6 +108,9 @@ pub fn run(db_file: &str) -> rusqlite::Result<()> {
     };
 
     status.join().expect("status thread join failed");
+
+    info!("Updating city labels by country");
+    conn.execute_batch(include_str!("city_labels_by_country.sql"))?;
     info!("Done!");
 
     Ok(())

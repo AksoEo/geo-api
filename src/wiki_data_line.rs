@@ -45,7 +45,11 @@ fn handle_territorial_entity(
 
     handle_place(obj, sink)?;
 
-    if let Some(langs) = json_get!(value(obj).claims.P37: array) {
+    // P37: official language
+    // P2936: language used
+    if let Some(langs) =
+        json_get!(value(obj).claims.P37: array).or(json_get!(value(obj).claims.P2936: array))
+    {
         let mut lang_index = 0;
         for lang in langs {
             if json_get!(value(lang).mainsnak.snaktype: string) != Some("value") {
@@ -321,6 +325,15 @@ pub fn handle_line(
     }
     let obj: Value = serde_json::from_str(line)?;
     let obj_id = json_get!(value(obj).id: string).expect("object has no id!");
+
+    if json_get!(value(obj).claims.P1366: array).map_or(false, |a| !a.is_empty())
+        || json_get!(value(obj).claims.P576: array).map_or(false, |a| !a.is_empty())
+    {
+        // P1366: "replaced by"
+        // P576: "dissolved date"
+        // -> don't care about this object
+        return Ok(());
+    }
 
     if let Some(code_entries) = json_get!(value(obj).claims.P297: array) {
         let mut code_entry = None;

@@ -96,7 +96,7 @@ impl Classes {
         let mut second_level_admin_div = load_subclasses("Q13220204")?;
         second_level_admin_div.insert("Q13220204".into());
 
-        let mut languages = HashSet::new();
+        let mut languages = load_subclasses("Q34770")?;
         languages.insert("Q34770".into());
 
         Ok(Classes {
