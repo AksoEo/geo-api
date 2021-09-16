@@ -111,6 +111,10 @@ pub fn run(db_file: &str) -> rusqlite::Result<()> {
 
     info!("Updating city labels by country");
     conn.execute_batch(include_str!("city_labels_by_country.sql"))?;
+    
+    info!("Updating Esperanto city labels");
+    conn.execute_batch(include_str!("esperanto_city_labels.sql"))?;
+    
     info!("Done!");
 
     Ok(())
