@@ -76,7 +76,7 @@ pub fn run(db_file: &str) -> rusqlite::Result<()> {
 
                     info!(
                         "{:.2}% (ETA: {:.1}{}) | {}/{} rows in {} | {:.1} rows/s (at: {})",
-                        progress,
+                        progress * 100.,
                         eta,
                         eta_unit,
                         rows_processed,
