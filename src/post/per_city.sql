@@ -8,10 +8,12 @@ FROM (
       UNION ALL
 
       SELECT
-	    step + 1 as step,
-	    parent AS id
+        step + 1 as step,
+        parent AS id
       FROM territorial_entities_parents, parents
-	  WHERE territorial_entities_parents.id = parents.id
+      WHERE
+        territorial_entities_parents.id = parents.id
+        AND step < 100
     )
 
   SELECT
@@ -28,7 +30,7 @@ FROM (
     object_labels.id = ?1
     AND (
       object_labels.lang = languages.code
-	  OR object_labels.lang LIKE iif(instr(languages.code,"-") = 0, languages.code, substring(languages.code, 0, instr(languages.code,"-"))) || "-%"
+      OR object_labels.lang LIKE iif(instr(languages.code,"-") = 0, languages.code, substring(languages.code, 0, instr(languages.code,"-"))) || "-%"
     )
 
   GROUP BY step, parents.id, object_languages.lang_id
