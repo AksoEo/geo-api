@@ -243,7 +243,11 @@ fn debug_entities<'a>(ids: impl Iterator<Item = &'a str>) -> reqwest::Result<()>
             }
 
             while let Ok(entry) = recv.try_recv() {
-                info!("{}: {:#?}", id, entry);
+                if let database::DataEntry::ObjectLabel { .. } = &entry {
+                    info!("{}: {:?}", id, entry);
+                } else {
+                    info!("{}: {:#?}", id, entry);
+                }
             }
         } else {
             error!("Entity {}: invalid data", id);

@@ -70,6 +70,7 @@ pub struct Classes {
     pub territorial_entities: HashSet<String>,
     pub human_settlements: HashSet<String>,
     pub excluded: HashSet<String>,
+    pub excluded_settlements: HashSet<String>,
     pub second_level_admin_div: HashSet<String>,
     pub languages: HashSet<String>,
 }
@@ -93,6 +94,16 @@ impl Classes {
             }
         }
 
+        let mut excluded_settlements: HashSet<String> = HashSet::new();
+        excluded_settlements.insert("Q159313".into()); // urban agglomeration
+        excluded_settlements.insert("Q106505045".into()); // linear pottery culture
+
+        for superclass in excluded_settlements.clone() {
+            for subclass in load_subclasses(&superclass)? {
+                excluded_settlements.insert(subclass);
+            }
+        }
+
         let mut second_level_admin_div = load_subclasses("Q13220204")?;
         second_level_admin_div.insert("Q13220204".into());
 
@@ -103,6 +114,7 @@ impl Classes {
             human_settlements,
             territorial_entities,
             excluded,
+            excluded_settlements,
             second_level_admin_div,
             languages,
         })

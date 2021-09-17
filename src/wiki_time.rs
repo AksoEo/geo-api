@@ -136,48 +136,65 @@ pub fn parse_wikidata_time(datetime: &str, zone_off: f64) -> Result<WikiTime, Ti
     Ok(wiki_time.add_seconds(zone_off as i32 * 60))
 }
 
-pub fn is_object_active(qualifiers: Option<&serde_json::Map<String, Value>>) -> bool {
-    let qualifiers = match qualifiers {
-        Some(q) => q,
-        None => return true, // assume true
-    };
-
-    let now = WikiTime::now();
-
-    // check if it already ended
-    if let Some(end) = json_get!((qualifiers).P582[0]: object) {
-        if json_get!((end).snaktype: string) == Some("value") {
-            if let Some(time) = json_get!((end).datavalue.value: object) {
-                if let (Some(datetime), Some(zone)) = (
-                    json_get!((time).time: string),
-                    json_get!((time).timezone: number),
-                ) {
-                    if let Ok(time) = parse_wikidata_time(datetime, zone) {
-                        if time < now {
-                            return false;
+pub fn is_object_start_active(qualifiers: Option<&serde_json::Map<String, Value>>) -> Option<bool> {
+    qualifiers.and_then(|qualifiers| {
+        if let Some(start) = json_get!((qualifiers).P580[0]: object) {
+            if json_get!((start).snaktype: string) == Some("value") {
+                if let Some(time) = json_get!((start).datavalue.value: object) {
+                    if let (Some(datetime), Some(zone)) = (
+                        json_get!((time).time: string),
+                        json_get!((time).timezone: number),
+                    ) {
+                        if let Ok(time) = parse_wikidata_time(datetime, zone) {
+                            if time > WikiTime::now() {
+                                return Some(false);
+                            }
                         }
                     }
                 }
             }
+            return Some(true);
         }
+        None
+    })
+}
+
+pub fn is_object_end_active(qualifiers: Option<&serde_json::Map<String, Value>>) -> Option<bool> {
+    qualifiers.and_then(|qualifiers| {
+        if let Some(end) = json_get!((qualifiers).P582[0]: object) {
+            if json_get!((end).snaktype: string) == Some("value") {
+                if let Some(time) = json_get!((end).datavalue.value: object) {
+                    if let (Some(datetime), Some(zone)) = (
+                        json_get!((time).time: string),
+                        json_get!((time).timezone: number),
+                    ) {
+                        if let Ok(time) = parse_wikidata_time(datetime, zone) {
+                            if time < WikiTime::now() {
+                                return Some(false);
+                            }
+                        }
+                    }
+                }
+            }
+            return Some(true);
+        }
+        None
+    })
+}
+
+pub fn is_object_active(qualifiers: Option<&serde_json::Map<String, Value>>) -> bool {
+    if qualifiers.is_none() {
+        return true; // assume true if no qualifiers given
+    }
+
+    // check if it already ended
+    if is_object_end_active(qualifiers) == Some(false) {
+        return false;
     }
 
     // check if it hasn't started yet
-    if let Some(end) = json_get!((qualifiers).P580[0]: object) {
-        if json_get!((end).snaktype: string) == Some("value") {
-            if let Some(time) = json_get!((end).datavalue.value: object) {
-                if let (Some(datetime), Some(zone)) = (
-                    json_get!((time).time: string),
-                    json_get!((time).timezone: number),
-                ) {
-                    if let Ok(time) = parse_wikidata_time(datetime, zone) {
-                        if time > now {
-                            return false;
-                        }
-                    }
-                }
-            }
-        }
+    if is_object_start_active(qualifiers) == Some(false) {
+        return false;
     }
 
     true

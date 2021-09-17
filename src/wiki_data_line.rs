@@ -1,7 +1,9 @@
 use crate::database::DataEntry;
 use crate::json_get;
 use crate::wiki_sparql::Classes;
-use crate::wiki_time::{is_object_active, parse_wikidata_time};
+use crate::wiki_time::{
+    is_object_active, is_object_end_active, is_object_start_active, parse_wikidata_time,
+};
 use crossbeam::channel::Sender;
 use serde_json::Value;
 use std::collections::HashSet;
@@ -123,16 +125,29 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
     handle_place(obj, sink)?;
 
     let mut country_id = None;
+    // prefer country entries with a start date over entries that don't have one
+    let mut current_entry_has_start_date = false;
+
     for country_entry in country_entries {
-        if is_object_active(json_get!(value(country_entry).qualifiers: object)) {
-            if let Some(id) = json_get!(value(country_entry).mainsnak.datavalue.value.id: string) {
-                country_id = Some(id.to_string());
-            } else {
-                warn!(
-                    "skipping HS {} P17 country entry because it has no datavalue id",
-                    obj_id
-                );
-            }
+        let qualifiers = json_get!(value(country_entry).qualifiers: object);
+        let start_active = is_object_start_active(qualifiers);
+        let end_active = is_object_end_active(qualifiers);
+        if end_active == Some(false) || start_active == Some(false) {
+            continue;
+        }
+
+        if start_active.is_none() && current_entry_has_start_date {
+            continue;
+        }
+
+        if let Some(id) = json_get!(value(country_entry).mainsnak.datavalue.value.id: string) {
+            country_id = Some(id.to_string());
+            current_entry_has_start_date = start_active.is_some();
+        } else {
+            warn!(
+                "skipping HS {} P17 country entry because it has no datavalue id",
+                obj_id
+            );
         }
     }
 
@@ -378,7 +393,7 @@ pub fn handle_line(
         let is_2nd = is_subclass_of(&obj, &classes.second_level_admin_div);
         handle_territorial_entity(&obj, is_2nd, sink)?;
     }
-    if is_human_settlement && !is_excluded {
+    if is_human_settlement && !is_excluded && !is_subclass_of(&obj, &classes.excluded_settlements) {
         handle_human_settlement(&obj, sink)?;
     }
     if is_language {
@@ -412,7 +427,7 @@ pub enum HandleLineError {
 fn parse_quantity(n: &str) -> Option<u64> {
     let should_keep_char = |c: &char| match c {
         c if c.is_whitespace() => false,
-        ',' | '.' | '+' => false, // thousands separators
+        ',' | '.' | '+' => false, // thousands separators and leading +
         _ => true,
     };
 
