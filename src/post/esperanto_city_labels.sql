@@ -18,4 +18,4 @@ FROM (
     ) AS label
   FROM cities
 ) AS labels
-WHERE id = labels.id;
+WHERE cities.id = labels.id;
