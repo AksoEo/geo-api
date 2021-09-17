@@ -52,6 +52,11 @@ fn main() {
                         .index(1)
                         .takes_value(true)
                         .default_value("geo.db"),
+                )
+                .arg(
+                    Arg::with_name("skip_cleanup")
+                        .help("skips the cleanup step")
+                        .long("no-cleanup")
                 ),
         )
         .get_matches();
@@ -87,7 +92,8 @@ fn main() {
         }
         ("post", Some(args)) => {
             let db_file = args.value_of("database").expect("no database file");
-            match post::run(db_file) {
+            let skip_cleanup = args.is_present("skip_cleanup");
+            match post::run(db_file, skip_cleanup) {
                 Ok(()) => {}
                 Err(e) => error!("{}", e),
             }

@@ -1,7 +1,7 @@
 use rusqlite::{params, Connection};
 use std::time::Instant;
 
-pub fn run(db_file: &str) -> rusqlite::Result<()> {
+pub fn run(db_file: &str, skip_cleanup: bool) -> rusqlite::Result<()> {
     info!(
         "Opening database at {} (SQLite {})",
         db_file,
@@ -114,6 +114,28 @@ pub fn run(db_file: &str) -> rusqlite::Result<()> {
 
     info!("Updating Esperanto city labels");
     conn.execute_batch(include_str!("esperanto_city_labels.sql"))?;
+
+    if !skip_cleanup {
+        const SCRIPTS: &[(&str, &str)] = &[
+            (include_str!("cleanup/01.sql"), "deleting territorial entities"),
+            (include_str!("cleanup/02.sql"), "cleaning up object languages"),
+            (include_str!("cleanup/03.sql"), "cleaning up object labels (may take a while)"),
+            (include_str!("cleanup/04.sql"), "deleting unused tables"),
+            (include_str!("cleanup/05.sql"), "cleaning up cities"),
+            (include_str!("cleanup/06.sql"), "deleting unlabeled cities"),
+            (include_str!("cleanup/07.sql"), "deleting unused object labels"),
+            (include_str!("cleanup/08.sql"), "deleting unused object languages"),
+            (include_str!("cleanup/09.sql"), "renaming tables"),
+        ];
+
+        for (i, (script, description)) in SCRIPTS.iter().enumerate() {
+            info!("Clean-up step {}/{}: {}", i + 1, SCRIPTS.len(), description);
+            conn.execute_batch(script)?;
+        }
+    }
+
+    info!("Vacuuming database");
+    conn.execute("VACUUM", [])?;
 
     info!("Done!");
 
