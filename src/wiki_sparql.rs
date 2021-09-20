@@ -88,6 +88,7 @@ impl Classes {
         excluded.insert("Q123705".into()); // neighborhoods, including stuff like shipyards
         excluded.insert("Q19953632".into()); // former administrative territorial entities
         excluded.insert("Q131596".into()); // farm
+        excluded.insert("Q43229".into()); // organization
 
         for superclass in excluded.clone() {
             for subclass in load_subclasses(&superclass)? {
