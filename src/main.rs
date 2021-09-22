@@ -54,6 +54,11 @@ fn main() {
                         .default_value("geo.db"),
                 )
                 .arg(
+                    Arg::with_name("only_cleanup")
+                        .help("only performs the cleanup step")
+                        .long("only-cleanup")
+                )
+                .arg(
                     Arg::with_name("skip_cleanup")
                         .help("skips the cleanup step")
                         .long("no-cleanup")
@@ -92,8 +97,18 @@ fn main() {
         }
         ("post", Some(args)) => {
             let db_file = args.value_of("database").expect("no database file");
+            let only_cleanup = args.is_present("only_cleanup");
             let skip_cleanup = args.is_present("skip_cleanup");
-            match post::run(db_file, skip_cleanup) {
+            let (do_post, do_cleanup) = match (only_cleanup, skip_cleanup) {
+                (true, true) => {
+                    error!("Can’t both do cleanup and not do cleanup");
+                    exit(-1);
+                }
+                (true, false) => (false, true),
+                (false, true) => (true, false),
+                (false, false) => (true, true),
+            };
+            match post::run(db_file, do_post, do_cleanup) {
                 Ok(()) => {}
                 Err(e) => error!("{}", e),
             }
