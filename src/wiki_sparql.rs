@@ -107,8 +107,10 @@ impl Classes {
             }
         }
 
-        let mut second_level_admin_div = load_subclasses("Q13220204")?;
-        second_level_admin_div.insert("Q13220204".into());
+        // classes & subclasses of "first-level administrative country subdivision"
+        // (why is this field called second_level? uh)
+        let mut second_level_admin_div = load_subclasses("Q10864048")?;
+        second_level_admin_div.insert("Q10864048".into());
 
         let mut languages = load_subclasses("Q34770")?;
         languages.insert("Q34770".into());
