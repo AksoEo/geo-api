@@ -12,6 +12,9 @@ pub fn run(db_file: &str, do_post: bool, do_cleanup: bool) -> rusqlite::Result<(
     conn.execute_batch("PRAGMA cache_size = 100000;")?;
 
     if do_post {
+        info!("Finding subdivisions");
+        conn.execute_batch(include_str!("find_subdivision.sql"))?;
+
         info!("Updating city labels");
         conn.execute_batch(include_str!("city_labels.sql"))?;
 
