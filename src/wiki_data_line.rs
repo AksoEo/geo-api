@@ -408,6 +408,16 @@ fn is_subclass_of(obj: &Value, classes: &HashSet<String>) -> bool {
         for parent in parents {
             if let Some(id) = json_get!(value(parent).mainsnak.datavalue.value.id: string) {
                 if classes.contains(id) {
+                    // check if this relation is expired
+                    if !is_object_active(json_get!(value(parent).qualifiers: object)) {
+                        continue;
+                    }
+
+                    if json_get!(value(parent).qualifiers.P1366[0]: object).is_some() {
+                        // P1366: "replaced by"
+                        continue;
+                    }
+
                     return true;
                 }
             }
