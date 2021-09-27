@@ -7,6 +7,7 @@ pub enum DataEntry {
     TerritorialEntity {
         id: String,
         is_2nd: bool,
+        iso: Option<String>,
     },
     TerritorialEntityParent {
         id: String,
@@ -85,10 +86,10 @@ pub fn db_writer(out_file: &str, recv: Receiver<DataEntry>) -> rusqlite::Result<
 
 fn insert_entry(tx: &Transaction, entry: DataEntry) -> rusqlite::Result<()> {
     match entry {
-        DataEntry::TerritorialEntity { id, is_2nd } => {
+        DataEntry::TerritorialEntity { id, is_2nd, iso } => {
             tx.execute(
-                "insert into territorial_entities (id, is_2nd) values (?1, ?2)",
-                params![id, is_2nd],
+                "insert into territorial_entities (id, is_2nd, iso) values (?1, ?2, ?3)",
+                params![id, is_2nd, iso],
             )?;
         }
         DataEntry::TerritorialEntityParent { id, parent } => {

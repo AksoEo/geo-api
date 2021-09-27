@@ -97,9 +97,10 @@ impl Classes {
         }
 
         let mut excluded_settlements: HashSet<String> = HashSet::new();
-        excluded_settlements.insert("Q15284".into()); // municipality
+        excluded_settlements.insert("Q941150".into()); // Plusregio (administrative unit in NL)
         excluded_settlements.insert("Q159313".into()); // urban agglomeration
         excluded_settlements.insert("Q106505045".into()); // linear pottery culture
+        excluded_settlements.insert("Q22969563".into()); // bodendenkmal
 
         for superclass in excluded_settlements.clone() {
             for subclass in load_subclasses(&superclass)? {

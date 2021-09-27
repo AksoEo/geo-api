@@ -26,7 +26,8 @@ create index languages_code_index on languages (code);
 
 create table territorial_entities (
     id string not null primary key,
-    is_2nd boolean not null
+    is_2nd boolean not null,
+    iso string
 );
 create index territorial_entities_is_2nd on territorial_entities (is_2nd);
 
