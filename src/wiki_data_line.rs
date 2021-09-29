@@ -42,7 +42,7 @@ fn handle_territorial_entity(
     let obj_id = json_get!(value(obj).id: string).unwrap();
 
     let iso = if is_2nd {
-        json_get!(value(obj).claims.P300.mainsnak.datavalue.value: string).map(|s| s.to_string())
+        json_get!(value(obj).claims.P300[0].mainsnak.datavalue.value: string).map(|s| s.to_string())
     } else {
         None
     };
