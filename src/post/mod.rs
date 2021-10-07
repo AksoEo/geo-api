@@ -149,6 +149,9 @@ pub fn run(db_file: &str, do_post: bool, do_cleanup: bool) -> rusqlite::Result<(
 
         info!("Updating Esperanto subdivision labels");
         conn.execute_batch(include_str!("esperanto_subdivision_labels.sql"))?;
+
+        info!("Updating cities by subdivision ISO");
+        conn.execute_batch(include_str!("subdivision_iso.sql"))?;
     }
 
     if do_cleanup {
