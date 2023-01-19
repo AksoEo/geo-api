@@ -337,13 +337,14 @@ pub fn handle_line(
     mut line: &str,
     classes: &Classes,
     sink: &Sender<DataEntry>,
+    debug: bool,
 ) -> Result<(), HandleLineError> {
     if line.len() <= 1 {
         // this is an empty line or one of the [ or ] array boundary lines
         return Ok(());
     }
 
-    if line.ends_with(",") {
+    if line.ends_with(',') {
         line = &line[..line.len() - 1];
     }
     let obj: Value = serde_json::from_str(line)?;
@@ -355,6 +356,9 @@ pub fn handle_line(
         // P1366: "replaced by"
         // P576: "dissolved date"
         // -> don't care about this object
+        if debug {
+            println!("entity has P1366 (replaced by) or P576 (dissolved date); skipping");
+        }
         return Ok(());
     }
 
@@ -392,16 +396,32 @@ pub fn handle_line(
         }
     }
 
-    let is_territorial_entity = is_subclass_of(&obj, &classes.territorial_entities);
-    let is_human_settlement = is_subclass_of(&obj, &classes.human_settlements);
-    let is_excluded = is_subclass_of(&obj, &classes.excluded);
-    let is_language = is_subclass_of(&obj, &classes.languages);
+    let is_territorial_entity = is_subclass_of(&obj, &classes.territorial_entities, debug, "territorial entity");
+    let is_human_settlement = is_subclass_of(&obj, &classes.human_settlements, debug, "human settlement");
+    let is_excluded = is_subclass_of(&obj, &classes.excluded, debug, "excluded");
+    let is_language = is_subclass_of(&obj, &classes.languages, debug, "languages");
+
+    if debug {
+        info!("is territorial entity: {is_territorial_entity}");
+        info!("is human settlement: {is_human_settlement}");
+        info!("is excluded: {is_excluded}");
+        info!("is language: {is_language}");
+    }
 
     if is_territorial_entity && !is_excluded {
-        let is_2nd = is_subclass_of(&obj, &classes.second_level_admin_div);
+        let is_2nd = is_subclass_of(&obj, &classes.second_level_admin_div, debug, "second level admin div");
+
+        if debug {
+            info!("is a non-excluded territorial entity - calling handler");
+        }
+
         handle_territorial_entity(&obj, is_2nd, sink)?;
     }
-    if is_human_settlement && !is_excluded && !is_subclass_of(&obj, &classes.excluded_settlements) {
+    if is_human_settlement && !is_excluded && !is_subclass_of(&obj, &classes.excluded_settlements, debug, "excluded settlements") {
+        if debug {
+            info!("is a non-excluded human settlement - calling handler");
+        }
+
         handle_human_settlement(&obj, sink)?;
     }
     if is_language {
@@ -411,7 +431,11 @@ pub fn handle_line(
     Ok(())
 }
 
-fn is_subclass_of(obj: &Value, classes: &HashSet<String>) -> bool {
+fn is_subclass_of(obj: &Value, classes: &HashSet<String>, debug: bool, debug_label: &str) -> bool {
+    if debug {
+        info!("checking - is object subclass of {debug_label}?");
+    }
+
     if let Some(parents) = json_get!(value(obj).claims.P31: array) {
         for parent in parents {
             if let Some(id) = json_get!(value(parent).mainsnak.datavalue.value.id: string) {
@@ -426,10 +450,18 @@ fn is_subclass_of(obj: &Value, classes: &HashSet<String>) -> bool {
                         continue;
                     }
 
+                    if debug {
+                        info!("is a subclass because class {id} is in the set");
+                    }
+
                     return true;
                 }
             }
         }
+    }
+
+    if debug {
+        info!("no");
     }
     false
 }

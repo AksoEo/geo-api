@@ -180,7 +180,7 @@ fn run(out_file: String) {
             let sink = send.clone();
             let classes2 = Arc::clone(&classes);
             rayon_core::spawn(
-                move || match wiki_data_line::handle_line(&line, &classes2, &sink) {
+                move || match wiki_data_line::handle_line(&line, &classes2, &sink, false) {
                     Ok(()) => (),
                     Err(e) => error!(
                         "error handling line {} at offset {}:{}\n\n",
@@ -256,18 +256,27 @@ fn debug_entities<'a>(ids: impl Iterator<Item = &'a str>) -> reqwest::Result<()>
             info!("Entity {}", id);
 
             let (send, recv) = crossbeam::channel::unbounded();
-            match wiki_data_line::handle_line(&entity, &classes, &send) {
+            match wiki_data_line::handle_line(&entity, &classes, &send, false) {
                 Ok(()) => {}
                 Err(e) => {
                     error!("{}", e);
                 }
             }
 
+            let mut was_empty = true;
             while let Ok(entry) = recv.try_recv() {
+                was_empty = false;
                 if let database::DataEntry::ObjectLabel { .. } = &entry {
                     info!("{}: {:?}", id, entry);
                 } else {
                     info!("{}: {:#?}", id, entry);
+                }
+            }
+
+            if was_empty {
+                info!("empty output - debug:");
+                if let Err(e) = wiki_data_line::handle_line(&entity, &classes, &send, true) {
+                    error!("{}", e);
                 }
             }
         } else {
