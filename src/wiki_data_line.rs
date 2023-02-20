@@ -350,9 +350,20 @@ pub fn handle_line(
     let obj: Value = serde_json::from_str(line)?;
     let obj_id = json_get!(value(obj).id: string).expect("object has no id!");
 
-    if json_get!(value(obj).claims.P1366: array).map_or(false, |a| !a.is_empty())
-        || json_get!(value(obj).claims.P576: array).map_or(false, |a| !a.is_empty())
-    {
+    // P1366 replaced by but not P518 applies to part
+    let replaced_by = json_get!(value(obj).claims.P1366: array).map_or(false, |a| {
+        let replaced_by = !a.is_empty();
+        let mut applies_to_part = false;
+        for item in a {
+            if json_get!(value(item).qualifiers.P518: array).map_or(false, |a| !a.is_empty()) {
+                applies_to_part = true;
+                break;
+            }
+        }
+        replaced_by && !applies_to_part
+    });
+
+    if replaced_by || json_get!(value(obj).claims.P576: array).map_or(false, |a| !a.is_empty()) {
         // P1366: "replaced by"
         // P576: "dissolved date"
         // -> don't care about this object
@@ -396,8 +407,14 @@ pub fn handle_line(
         }
     }
 
-    let is_territorial_entity = is_subclass_of(&obj, &classes.territorial_entities, debug, "territorial entity");
-    let is_human_settlement = is_subclass_of(&obj, &classes.human_settlements, debug, "human settlement");
+    let is_territorial_entity = is_subclass_of(
+        &obj,
+        &classes.territorial_entities,
+        debug,
+        "territorial entity",
+    );
+    let is_human_settlement =
+        is_subclass_of(&obj, &classes.human_settlements, debug, "human settlement");
     let is_excluded = is_subclass_of(&obj, &classes.excluded, debug, "excluded");
     let is_language = is_subclass_of(&obj, &classes.languages, debug, "languages");
 
@@ -409,7 +426,12 @@ pub fn handle_line(
     }
 
     if is_territorial_entity && !is_excluded {
-        let is_2nd = is_subclass_of(&obj, &classes.second_level_admin_div, debug, "second level admin div");
+        let is_2nd = is_subclass_of(
+            &obj,
+            &classes.second_level_admin_div,
+            debug,
+            "second level admin div",
+        );
 
         if debug {
             info!("is a non-excluded territorial entity - calling handler");
@@ -417,7 +439,15 @@ pub fn handle_line(
 
         handle_territorial_entity(&obj, is_2nd, sink)?;
     }
-    if is_human_settlement && !is_excluded && !is_subclass_of(&obj, &classes.excluded_settlements, debug, "excluded settlements") {
+    if is_human_settlement
+        && !is_excluded
+        && !is_subclass_of(
+            &obj,
+            &classes.excluded_settlements,
+            debug,
+            "excluded settlements",
+        )
+    {
         if debug {
             info!("is a non-excluded human settlement - calling handler");
         }

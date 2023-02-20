@@ -56,12 +56,12 @@ fn main() {
                 .arg(
                     Arg::with_name("only_cleanup")
                         .help("only performs the cleanup step")
-                        .long("only-cleanup")
+                        .long("only-cleanup"),
                 )
                 .arg(
                     Arg::with_name("skip_cleanup")
                         .help("skips the cleanup step")
-                        .long("no-cleanup")
+                        .long("no-cleanup"),
                 ),
         )
         .get_matches();
@@ -179,15 +179,15 @@ fn run(out_file: String) {
 
             let sink = send.clone();
             let classes2 = Arc::clone(&classes);
-            rayon_core::spawn(
-                move || match wiki_data_line::handle_line(&line, &classes2, &sink, false) {
+            rayon_core::spawn(move || {
+                match wiki_data_line::handle_line(&line, &classes2, &sink, false) {
                     Ok(()) => (),
                     Err(e) => error!(
                         "error handling line {} at offset {}:{}\n\n",
                         line_number, line_offset, e
                     ),
-                },
-            );
+                }
+            });
 
             let elapsed = last_time.elapsed();
             if elapsed.as_secs() > 10 {

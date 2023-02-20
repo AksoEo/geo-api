@@ -18,11 +18,7 @@ pub fn run(db_file: &str, do_post: bool, do_cleanup: bool) -> rusqlite::Result<(
             iter_query: &str,
             per_row: &str,
         ) -> rusqlite::Result<()> {
-            let unlabeled_city_count: u64 = conn.query_row(
-                count_query,
-                [],
-                |row| row.get(0),
-            )?;
+            let unlabeled_city_count: u64 = conn.query_row(count_query, [], |row| row.get(0))?;
             let status = {
                 let (send, recv) = crossbeam::channel::unbounded();
                 let status = std::thread::spawn(move || {
@@ -50,7 +46,8 @@ pub fn run(db_file: &str, do_post: bool, do_cleanup: bool) -> rusqlite::Result<(
 
                             let progress = rows_processed as f64 / unlabeled_city_count as f64;
 
-                            let rps = rows_processed_since_last as f64 / last_time.elapsed().as_secs_f64();
+                            let rps = rows_processed_since_last as f64
+                                / last_time.elapsed().as_secs_f64();
 
                             let elapsed_secs = start_time.elapsed().as_secs();
                             let secs = elapsed_secs % 60;
@@ -65,7 +62,8 @@ pub fn run(db_file: &str, do_post: bool, do_cleanup: bool) -> rusqlite::Result<(
                                 format!("{}s", secs)
                             };
 
-                            let mut eta = (unlabeled_city_count - rows_processed) as f64 / rps / 60.;
+                            let mut eta =
+                                (unlabeled_city_count - rows_processed) as f64 / rps / 60.;
                             let mut eta_unit = "m";
                             if eta > 60. {
                                 eta /= 60.;
@@ -156,14 +154,29 @@ pub fn run(db_file: &str, do_post: bool, do_cleanup: bool) -> rusqlite::Result<(
 
     if do_cleanup {
         const SCRIPTS: &[(&str, &str)] = &[
-            (include_str!("cleanup/01.sql"), "deleting territorial entities"),
-            (include_str!("cleanup/02.sql"), "cleaning up object languages"),
-            (include_str!("cleanup/03.sql"), "cleaning up object labels (may take a while)"),
+            (
+                include_str!("cleanup/01.sql"),
+                "deleting territorial entities",
+            ),
+            (
+                include_str!("cleanup/02.sql"),
+                "cleaning up object languages",
+            ),
+            (
+                include_str!("cleanup/03.sql"),
+                "cleaning up object labels (may take a while)",
+            ),
             (include_str!("cleanup/04.sql"), "deleting unused tables"),
             (include_str!("cleanup/05.sql"), "cleaning up cities"),
             (include_str!("cleanup/06.sql"), "deleting unlabeled cities"),
-            (include_str!("cleanup/07.sql"), "deleting unused object labels"),
-            (include_str!("cleanup/08.sql"), "deleting unused object languages"),
+            (
+                include_str!("cleanup/07.sql"),
+                "deleting unused object labels",
+            ),
+            (
+                include_str!("cleanup/08.sql"),
+                "deleting unused object languages",
+            ),
             (include_str!("cleanup/09.sql"), "renaming tables"),
         ];
 
