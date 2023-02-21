@@ -14,7 +14,7 @@ FROM (
 	FROM cities
 	INNER JOIN cities_countries
 	ON cities_countries.city = cities.id
-	ORDER BY cities_countries.priority
+	ORDER BY cities_countries.priority ASC
 	LIMIT 1
 ) AS v_countries
 WHERE v_countries.id = cities.id;

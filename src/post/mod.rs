@@ -111,6 +111,9 @@ pub fn run(db_file: &str, do_post: bool, do_cleanup: bool) -> rusqlite::Result<(
             Ok(())
         }
 
+        info!("Picking most relevant countries");
+        conn.execute_batch(include_str!("city_countries.sql"))?;
+
         info!("Finding subdivisions");
         conn.execute_batch(include_str!("find_subdivision.sql"))?;
 

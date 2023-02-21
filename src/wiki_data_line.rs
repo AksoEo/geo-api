@@ -132,11 +132,7 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
 
     handle_place(obj, sink)?;
 
-    let mut country_id = None;
-    // prefer country entries with a start date over entries that don't have one
-    let mut current_entry_has_start_date = false;
-
-    for country_entry in country_entries {
+    for (i, country_entry) in country_entries.iter().enumerate() {
         let qualifiers = json_get!(value(country_entry).qualifiers: object);
         let start_active = is_object_start_active(qualifiers);
         let end_active = is_object_end_active(qualifiers);
@@ -144,13 +140,20 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
             continue;
         }
 
-        if start_active.is_none() && current_entry_has_start_date {
-            continue;
-        }
+        // prefer country entries with a start date over entries that don't have one
+        let priority = if start_active.is_some() {
+            i as u32
+        } else {
+            1000 + i as u32
+        };
 
         if let Some(id) = json_get!(value(country_entry).mainsnak.datavalue.value.id: string) {
-            country_id = Some(id.to_string());
-            current_entry_has_start_date = start_active.is_some();
+            sink.send(DataEntry::CityCountry {
+                id: obj_id.into(),
+                country: id.into(),
+                priority,
+            })
+            .unwrap();
         } else {
             warn!(
                 "skipping HS {} P17 country entry because it has no datavalue id",
@@ -255,15 +258,12 @@ fn handle_human_settlement(obj: &Value, sink: &Sender<DataEntry>) -> Result<(), 
         // warn!("skipping {} lat/lon because it has no P625 entry", obj_id);
     }
 
-    if let Some(country_id) = country_id {
-        sink.send(DataEntry::City {
-            id: obj_id.into(),
-            country: country_id,
-            population,
-            lat: lat_lon.map(|(lat, _)| lat),
-            lon: lat_lon.map(|(_, lon)| lon),
-        })?;
-    }
+    sink.send(DataEntry::City {
+        id: obj_id.into(),
+        population,
+        lat: lat_lon.map(|(lat, _)| lat),
+        lon: lat_lon.map(|(_, lon)| lon),
+    })?;
 
     if let Some(labels) = json_get!(value(obj).labels: object) {
         for label in labels.values() {

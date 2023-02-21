@@ -24,10 +24,14 @@ pub enum DataEntry {
     },
     City {
         id: String,
-        country: String,
         population: Option<u64>,
         lat: Option<f64>,
         lon: Option<f64>,
+    },
+    CityCountry {
+        id: String,
+        country: String,
+        priority: u32,
     },
     ObjectLabel {
         id: String,
@@ -112,14 +116,23 @@ fn insert_entry(tx: &Transaction, entry: DataEntry) -> rusqlite::Result<()> {
         }
         DataEntry::City {
             id,
-            country,
             population,
             lat,
             lon,
         } => {
             tx.execute(
-                "insert into cities (id, country, population, lat, lon) values (?1, ?2, ?3, ?4, ?5)",
-                params![id, country, population, lat, lon],
+                "insert into cities (id, population, lat, lon) values (?1, ?2, ?3, ?4)",
+                params![id, population, lat, lon],
+            )?;
+        }
+        DataEntry::CityCountry {
+            id,
+            country,
+            priority,
+        } => {
+            tx.execute(
+                "insert or ignore into cities_countries (city, country, priority) values (?1, ?2, ?3)",
+                params![id, country, priority],
             )?;
         }
         DataEntry::ObjectLabel {

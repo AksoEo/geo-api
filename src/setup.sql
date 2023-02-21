@@ -40,7 +40,7 @@ create index territorial_entities_parents_parent_index on territorial_entities_p
 
 create table cities (
     id string not null primary key,
-    country string not null,
+    country string,
     population integer,
     lat decimal(5, 3),
     lon decimal(6, 3)
@@ -51,12 +51,15 @@ create index cities_lat_index on cities (lat);
 create index cities_lon_index on cities (lon);
 
 create table cities_countries (
-    city string not null primary key,
+    city string not null,
     priority integer not null,
     country string not null,
+    primary key (city, priority, country)
 );
-create index cities_countries_priority_index on cities_countries(priority);
+create index cities_countries_priority_index on cities_countries (priority);
 create index cities_countries_country_index on cities_countries (country);
+create unique index cities_countries_city_country_index on cities_countries (city, country);
+create unique index cities_countries_city_priority_index on cities_countries (city, priority);
 
 create table object_labels (
     id string not null,
