@@ -50,6 +50,14 @@ create index cities_population_index on cities (population);
 create index cities_lat_index on cities (lat);
 create index cities_lon_index on cities (lon);
 
+create table cities_countries (
+    city string not null primary key,
+    priority integer not null,
+    country string not null,
+);
+create index cities_countries_priority_index on cities_countries(priority);
+create index cities_countries_country_index on cities_countries (country);
+
 create table object_labels (
     id string not null,
     lang string not null,
