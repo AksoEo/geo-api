@@ -88,6 +88,7 @@ impl Classes {
         excluded.insert("Q123705".into()); // neighborhoods, including stuff like shipyards
         excluded.insert("Q131596".into()); // farm
         excluded.insert("Q40357".into()); // prisons
+        excluded.insert("Q695850".into()); // airbase
 
         // unexcluded because this causes moscow (->Q4442912) and others to be excluded
         // excluded.insert("Q19953632".into()); // former administrative territorial entities
