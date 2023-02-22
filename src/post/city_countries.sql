@@ -10,7 +10,7 @@ WHERE NOT EXISTS(
 UPDATE cities
 SET country = v_countries.country
 FROM (
-	SELECT cities.id
+	SELECT cities.id, cities_countries.country
 	FROM cities
 	INNER JOIN cities_countries
 	ON cities_countries.city = cities.id
