@@ -1,4 +1,4 @@
-# Remove city countries that do not exist in geo-db (fallen countries usually)
+-- Remove city countries that do not exist in geo-db (fallen countries usually)
 DELETE FROM cities_countries
 WHERE NOT EXISTS(
 	SELECT 1
@@ -6,7 +6,7 @@ WHERE NOT EXISTS(
 	WHERE countries.id = cities_countries.country
 );
 
-# Pick one value for cities.country from cities_countries;
+-- Pick one value for cities.country from cities_countries;
 UPDATE cities
 SET country = v_countries.country
 FROM (
