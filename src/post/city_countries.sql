@@ -10,11 +10,14 @@ WHERE NOT EXISTS(
 UPDATE cities
 SET country = v_countries.country
 FROM (
-	SELECT cities.id, cities_countries.country
-	FROM cities
-	INNER JOIN cities_countries
-	ON cities_countries.city = cities.id
-	ORDER BY cities_countries.priority ASC
-	LIMIT 1
+	SELECT cc.city, country FROM cities_countries
+	INNER JOIN
+	(
+		SELECT city, MIN(priority) as prio
+		FROM cities_countries
+		GROUP BY city
+	) cc
+	ON cc.city = cities_countries.city
+	AND cities_countries.priority = cc.prio
 ) AS v_countries
-WHERE v_countries.id = cities.id;
+WHERE v_countries.city = cities.id;
